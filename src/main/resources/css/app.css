@@ -1,0 +1,125 @@
+/* JavaFX Tutor — host theme (dark). Scoped via .host-root selectors so it
+   does not leak into the sandbox subtree (.sandbox-root). */
+
+.host-root {
+    -fx-base: #1e1f22;
+    -fx-background: #2b2d30;
+    -fx-control-inner-background: #2b2d30;
+    -fx-accent: #4a8cff;
+    -fx-font-family: "Inter", "Helvetica Neue", "Segoe UI", sans-serif;
+    -fx-font-size: 13px;
+}
+
+.host-root .nav-header {
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #c8c9cc;
+    -fx-padding: 10 12 6 12;
+}
+
+.host-root .lesson-navigator {
+    -fx-background-color: #1e1f22;
+}
+
+.host-root .lesson-pane {
+    -fx-background-color: #232427;
+}
+
+.host-root .lesson-content {
+    -fx-padding: 16;
+}
+
+.host-root .lesson-title {
+    -fx-font-size: 20px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #f0f1f3;
+}
+
+.host-root .lesson-body {
+    -fx-fill: #c8c9cc;
+    -fx-font-size: 13px;
+}
+
+.host-root .editor-pane {
+    -fx-background-color: #1b1c1e;
+}
+
+.host-root .editor-textarea {
+    -fx-font-family: "JetBrains Mono", "Menlo", "Consolas", monospace;
+    -fx-font-size: 13px;
+}
+
+.host-root .editor-textarea .content {
+    -fx-background-color: #1b1c1e;
+}
+
+.host-root .preview-host {
+    -fx-background-color: #ffffff;
+    -fx-border-color: #3a3c40;
+    -fx-border-width: 1 0 0 0;
+}
+
+.host-root .inspector-pane {
+    -fx-background-color: #1e1f22;
+}
+
+.host-root .inspector-placeholder {
+    -fx-padding: 0 12 12 12;
+    -fx-text-fill: #9aa0a6;
+}
+
+/* Markdown content styles (scoped under .host-root via .lesson-pane) */
+.host-root .lesson-title-flow {
+    -fx-padding: 0 16 8 16;
+}
+
+.host-root .md-paragraph,
+.host-root .md-heading,
+.host-root .md-list-item {
+    -fx-padding: 0 16 0 16;
+    -fx-line-spacing: 3;
+}
+
+.host-root .md-text {
+    -fx-fill: #c8c9cc;
+}
+
+.host-root .md-inline-code {
+    -fx-fill: #6ab0de;
+    -fx-background-color: #2d3038;
+}
+
+.host-root .md-code-flow {
+    -fx-background-color: #1b1c1e;
+    -fx-padding: 10 16 10 16;
+    -fx-border-color: #3a3c40;
+    -fx-border-width: 1;
+}
+
+.host-root .md-code-block {
+    -fx-fill: #a9b7c6;
+}
+
+/* Lesson tree */
+.host-root .lesson-tree {
+    -fx-background-color: #1e1f22;
+}
+
+.host-root .lesson-tree .tree-cell {
+    -fx-background-color: transparent;
+    -fx-text-fill: #c8c9cc;
+    -fx-padding: 3 8 3 4;
+}
+
+.host-root .lesson-tree .tree-cell:selected {
+    -fx-background-color: #2d4a8a;
+    -fx-text-fill: #ffffff;
+}
+
+/* Sandbox subtree — neutral baseline so the user's snippet looks like a
+   default JavaFX app. User CSS via Parent.getStylesheets() applies here. */
+.sandbox-root {
+    -fx-base: #ececec;
+    -fx-font-family: "Helvetica Neue", "Segoe UI", sans-serif;
+    -fx-font-size: 13px;
+}

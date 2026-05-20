@@ -1,0 +1,3 @@
+curriculum/foundations/001-what-is-a-stage.md
+curriculum/foundations/002-scene-and-node.md
+curriculum/foundations/003-stackpane-hello.md

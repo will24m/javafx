@@ -1,0 +1,74 @@
+package com.jfxtutor.data.curriculum;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
+
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
+
+public class CurriculumLoader {
+
+    private static final ObjectMapper YAML = new ObjectMapper(new YAMLFactory());
+
+    /**
+     * Loads all lessons listed in /curriculum/index.txt from the classpath.
+     * Returns them sorted by (tier, order).
+     */
+    public static List<Lesson> loadAll() {
+        List<String> paths = readIndex();
+        List<Lesson> lessons = new ArrayList<>();
+        for (String path : paths) {
+            try {
+                lessons.add(loadLesson(path));
+            } catch (Exception e) {
+                System.err.println("Failed to load lesson at " + path + ": " + e.getMessage());
+            }
+        }
+        lessons.sort((a, b) -> {
+            int tierCmp = a.meta.tier.compareTo(b.meta.tier);
+            return tierCmp != 0 ? tierCmp : Integer.compare(a.meta.order, b.meta.order);
+        });
+        return lessons;
+    }
+
+    private static List<String> readIndex() {
+        try (InputStream is = CurriculumLoader.class.getClassLoader()
+                .getResourceAsStream("curriculum/index.txt")) {
+            if (is == null) throw new IllegalStateException("curriculum/index.txt not found on classpath");
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8))) {
+                return reader.lines()
+                        .map(String::trim)
+                        .filter(l -> !l.isEmpty())
+                        .collect(Collectors.toList());
+            }
+        } catch (IOException e) {
+            throw new RuntimeException("Cannot read curriculum index", e);
+        }
+    }
+
+    static Lesson loadLesson(String classpathPath) throws IOException {
+        try (InputStream is = CurriculumLoader.class.getClassLoader()
+                .getResourceAsStream(classpathPath)) {
+            if (is == null) throw new IllegalArgumentException("Resource not found: " + classpathPath);
+            String raw = new String(is.readAllBytes(), StandardCharsets.UTF_8);
+            return parse(raw);
+        }
+    }
+
+    static Lesson parse(String raw) throws IOException {
+        if (!raw.startsWith("---")) throw new IllegalArgumentException("Missing frontmatter");
+        int end = raw.indexOf("\n---", 3);
+        if (end < 0) throw new IllegalArgumentException("Unclosed frontmatter");
+        String yaml = raw.substring(3, end).trim();
+        // Body starts after the closing ---\n
+        String body = raw.substring(end + 4).trim();
+        LessonFrontmatter meta = YAML.readValue(yaml, LessonFrontmatter.class);
+        return new Lesson(meta, body);
+    }
+}

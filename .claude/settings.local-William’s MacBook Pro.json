@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git -C \"/Users/williamwu/Library/CloudStorage/OneDrive-Personal/Documents/Personal Code/javafx\" log --oneline -20)",
+      "Bash(git -C \"/Users/williamwu/Library/CloudStorage/OneDrive-Personal/Documents/Personal Code/javafx\" status)",
+      "Bash(java -version)",
+      "Bash(/usr/libexec/java_home -V)",
+      "Bash(sw_vers)",
+      "Read(//opt/homebrew/opt/**)",
+      "Bash(brew list *)",
+      "Bash(mkdir -p \"/Users/williamwu/Library/CloudStorage/OneDrive-Personal/Documents/Personal Code/javafx/gradle/wrapper\")",
+      "Bash(curl -fSL -o gradle/wrapper/gradle-wrapper.jar \"https://raw.githubusercontent.com/gradle/gradle/v8.10.0/gradle/wrapper/gradle-wrapper.jar\")",
+      "Bash(curl -fSL -o gradlew \"https://raw.githubusercontent.com/gradle/gradle/v8.10.0/gradlew\")",
+      "Bash(curl -fSL -o gradlew.bat \"https://raw.githubusercontent.com/gradle/gradle/v8.10.0/gradlew.bat\")",
+      "Bash(chmod +x gradlew)",
+      "Bash(./gradlew --version)",
+      "Bash(./gradlew compileJava)"
+    ]
+  }
+}
