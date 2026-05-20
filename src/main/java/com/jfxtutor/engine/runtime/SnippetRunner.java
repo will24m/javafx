@@ -147,8 +147,9 @@ public class SnippetRunner {
         }
         try {
             SnippetSession previous = current;
-            current = new SnippetSession(result.classLoader(), result.root());
+            SnippetSession next = new SnippetSession(result.classLoader(), result.root());
             onMount.accept(result.root());
+            current = next;
             if (previous != null) {
                 previous.close();
             }

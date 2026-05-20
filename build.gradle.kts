@@ -17,6 +17,15 @@ java {
     }
 }
 
+sourceSets.configureEach {
+    java.exclude(
+        "**/*William*.java",
+        "**/*MacBook*.java",
+        "**/*conflict*.java",
+        "**/*Conflict*.java"
+    )
+}
+
 javafx {
     version = "21.0.5"
     modules = listOf("javafx.controls", "javafx.fxml")
