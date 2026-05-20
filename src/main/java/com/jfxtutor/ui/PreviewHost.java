@@ -8,21 +8,24 @@ import javafx.scene.layout.VBox;
 
 /**
  * Mount point for snippet output. The compiled snippet's build() returns a
- * Parent which we set as the single child. The wrapping .sandbox-root style
- * class scopes user-provided CSS so it does not leak into the host scene.
+ * Parent which we mount inside a sandbox wrapper so host CSS stays scoped.
  *
- * <p>Also hosts an error overlay shown when a recompile fails — the previous
+ * <p>Also hosts an error overlay shown when a recompile fails; the previous
  * working preview stays mounted underneath so the user keeps visual context.
  */
 public class PreviewHost extends StackPane {
 
     private Parent currentRoot;
+    private final StackPane sandboxContainer;
     private final VBox errorOverlay;
     private final Label errorLabel;
 
     public PreviewHost() {
-        getStyleClass().addAll("preview-host", "sandbox-root");
+        getStyleClass().add("preview-host");
         setId("previewHost");
+
+        this.sandboxContainer = new StackPane();
+        sandboxContainer.getStyleClass().addAll("preview-sandbox", "sandbox-root");
 
         this.errorLabel = new Label();
         errorLabel.setWrapText(true);
@@ -35,22 +38,16 @@ public class PreviewHost extends StackPane {
         errorOverlay.setManaged(false);
         StackPane.setAlignment(errorOverlay, Pos.BOTTOM_LEFT);
 
-        getChildren().add(errorOverlay);
-    }
-
-    /** Phase 0 stub: hardcoded Hello, JavaFX as if the snippet had run. */
-    public void showHelloWorldStub() {
-        StackPane stub = new StackPane(new Label("Hello, JavaFX"));
-        stub.getStyleClass().add("preview-stub");
-        setSnippetRoot(stub);
+        getChildren().addAll(sandboxContainer, errorOverlay);
     }
 
     /** Replace the mounted snippet root. Must be called on FX thread. */
     public void setSnippetRoot(Parent root) {
-        getChildren().removeIf(n -> n != errorOverlay);
         this.currentRoot = root;
-        if (root != null) {
-            getChildren().add(0, root);
+        if (root == null) {
+            sandboxContainer.getChildren().clear();
+        } else {
+            sandboxContainer.getChildren().setAll(root);
         }
         clearError();
     }

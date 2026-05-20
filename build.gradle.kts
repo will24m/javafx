@@ -19,8 +19,16 @@ java {
 
 javafx {
     version = "21.0.5"
-    modules = listOf("javafx.controls", "javafx.fxml", "javafx.web")
+    modules = listOf("javafx.controls", "javafx.fxml")
 }
+
+val compilerAccessJvmArgs = listOf(
+    "--add-modules=jdk.compiler",
+    "--add-opens=jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED",
+    "--add-opens=jdk.compiler/com.sun.tools.javac.file=ALL-UNNAMED",
+    "--add-exports=jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED",
+    "--add-exports=jdk.compiler/com.sun.tools.javac.file=ALL-UNNAMED"
+)
 
 application {
     mainClass.set("com.jfxtutor.app.JavaFxTutorApp")
@@ -39,8 +47,14 @@ dependencies {
     testImplementation("org.testfx:testfx-core:4.0.18")
     testImplementation("org.testfx:testfx-junit5:4.0.18")
     testImplementation("org.hamcrest:hamcrest:2.2")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
-tasks.test {
+tasks.withType<JavaExec>().configureEach {
+    jvmArgs(compilerAccessJvmArgs)
+}
+
+tasks.withType<Test>().configureEach {
     useJUnitPlatform()
+    jvmArgs(compilerAccessJvmArgs)
 }

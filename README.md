@@ -26,5 +26,6 @@ Gradle is not required — the wrapper (`./gradlew`) bootstraps it.
 
 ## Current status
 
-Phase 0 (skeleton + hardcoded Hello World lesson) — see [PLAN.md](PLAN.md)
-for the phased roadmap.
+Phase 2 in progress: curriculum loading, markdown rendering, RichTextFX editing,
+and live in-memory snippet compilation are present. See [PLAN.md](PLAN.md) for
+the phased roadmap and remaining risks.

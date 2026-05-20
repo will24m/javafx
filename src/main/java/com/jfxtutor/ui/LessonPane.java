@@ -3,13 +3,16 @@ package com.jfxtutor.ui;
 import com.jfxtutor.data.curriculum.Lesson;
 import org.commonmark.node.BulletList;
 import org.commonmark.node.Code;
+import org.commonmark.node.BlockQuote;
 import org.commonmark.node.Document;
 import org.commonmark.node.Emphasis;
 import org.commonmark.node.FencedCodeBlock;
 import org.commonmark.node.HardLineBreak;
 import org.commonmark.node.Heading;
+import org.commonmark.node.Link;
 import org.commonmark.node.ListItem;
 import org.commonmark.node.Node;
+import org.commonmark.node.OrderedList;
 import org.commonmark.node.Paragraph;
 import org.commonmark.node.SoftLineBreak;
 import org.commonmark.node.StrongEmphasis;
@@ -19,6 +22,7 @@ import javafx.scene.control.ScrollPane;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 import javafx.scene.text.Font;
+import javafx.scene.text.FontPosture;
 import javafx.scene.text.FontWeight;
 import javafx.scene.text.Text;
 import javafx.scene.text.TextFlow;
@@ -74,7 +78,13 @@ public class LessonPane extends VBox {
 
         Document doc = (Document) MD.parse(markdown);
         Node child = doc.getFirstChild();
+        boolean skippedDuplicateTitle = false;
         while (child != null) {
+            if (!skippedDuplicateTitle && isDuplicateTitleHeading(child, title)) {
+                skippedDuplicateTitle = true;
+                child = child.getNext();
+                continue;
+            }
             javafx.scene.Node rendered = renderBlock(child);
             if (rendered != null) nodes.add(rendered);
             child = child.getNext();
@@ -87,7 +97,7 @@ public class LessonPane extends VBox {
             TextFlow flow = new TextFlow();
             flow.getStyleClass().add("md-heading");
             double size = switch (h.getLevel()) { case 1 -> 18.0; case 2 -> 16.0; default -> 14.0; };
-            collectInline(h.getFirstChild(), flow, size, FontWeight.BOLD);
+            collectInline(h.getFirstChild(), flow, size, FontWeight.BOLD, FontPosture.REGULAR);
             return flow;
         }
         if (node instanceof Paragraph p) {
@@ -114,32 +124,67 @@ public class LessonPane extends VBox {
             }
             return list;
         }
+        if (node instanceof OrderedList ol) {
+            VBox list = new VBox(4);
+            int number = ol.getMarkerStartNumber() == null ? 1 : ol.getMarkerStartNumber();
+            Node item = ol.getFirstChild();
+            while (item instanceof ListItem li) {
+                TextFlow itemFlow = inlineFlow(
+                        li.getFirstChild() instanceof Paragraph p ? p.getFirstChild() : null,
+                        "md-list-item");
+                itemFlow.getChildren().add(0, new Text(number++ + ". "));
+                list.getChildren().add(itemFlow);
+                item = item.getNext();
+            }
+            return list;
+        }
+        if (node instanceof BlockQuote quote) {
+            VBox block = new VBox(6);
+            block.getStyleClass().add("md-block-quote");
+            Node child = quote.getFirstChild();
+            while (child != null) {
+                javafx.scene.Node rendered = renderBlock(child);
+                if (rendered != null) block.getChildren().add(rendered);
+                child = child.getNext();
+            }
+            return block;
+        }
         return null;
     }
 
     private TextFlow inlineFlow(Node firstInline, String styleClass) {
         TextFlow flow = new TextFlow();
         flow.getStyleClass().add(styleClass);
-        collectInline(firstInline, flow, 13, FontWeight.NORMAL);
+        collectInline(firstInline, flow, 13, FontWeight.NORMAL, FontPosture.REGULAR);
         return flow;
     }
 
-    private void collectInline(Node node, TextFlow into, double size, FontWeight weight) {
+    private void collectInline(Node node,
+                               TextFlow into,
+                               double size,
+                               FontWeight weight,
+                               FontPosture posture) {
         while (node != null) {
             if (node instanceof org.commonmark.node.Text t) {
                 Text fx = new Text(t.getLiteral());
-                fx.setFont(Font.font(null, weight, size));
+                fx.setFont(Font.font(null, weight, posture, size));
                 fx.getStyleClass().add("md-text");
                 into.getChildren().add(fx);
             } else if (node instanceof Code c) {
                 Text fx = new Text(c.getLiteral());
-                fx.setFont(Font.font("Menlo", size));
+                fx.setFont(Font.font("Menlo", FontWeight.NORMAL, FontPosture.REGULAR, size));
                 fx.getStyleClass().add("md-inline-code");
                 into.getChildren().add(fx);
             } else if (node instanceof Emphasis em) {
-                collectInline(em.getFirstChild(), into, size, FontWeight.NORMAL);
+                collectInline(em.getFirstChild(), into, size, weight, FontPosture.ITALIC);
             } else if (node instanceof StrongEmphasis se) {
-                collectInline(se.getFirstChild(), into, size, FontWeight.BOLD);
+                collectInline(se.getFirstChild(), into, size, FontWeight.BOLD, posture);
+            } else if (node instanceof Link link) {
+                Text fx = new Text(plainText(link.getFirstChild()));
+                fx.setFont(Font.font(null, weight, posture, size));
+                fx.setUnderline(true);
+                fx.getStyleClass().add("md-link");
+                into.getChildren().add(fx);
             } else if (node instanceof SoftLineBreak || node instanceof HardLineBreak) {
                 into.getChildren().add(new Text(" "));
             }
@@ -153,9 +198,26 @@ public class LessonPane extends VBox {
         return new TextFlow(t);
     }
 
-    private Text styledText(String s, double size, FontWeight weight) {
-        Text t = new Text(s);
-        t.setFont(Font.font(null, weight, size));
-        return t;
+    private boolean isDuplicateTitleHeading(Node node, String title) {
+        return node instanceof Heading h
+                && h.getLevel() == 1
+                && plainText(h.getFirstChild()).trim().equals(title);
+    }
+
+    private String plainText(Node node) {
+        StringBuilder sb = new StringBuilder();
+        while (node != null) {
+            if (node instanceof org.commonmark.node.Text text) {
+                sb.append(text.getLiteral());
+            } else if (node instanceof Code code) {
+                sb.append(code.getLiteral());
+            } else if (node instanceof SoftLineBreak || node instanceof HardLineBreak) {
+                sb.append(' ');
+            } else if (node.getFirstChild() != null) {
+                sb.append(plainText(node.getFirstChild()));
+            }
+            node = node.getNext();
+        }
+        return sb.toString();
     }
 }

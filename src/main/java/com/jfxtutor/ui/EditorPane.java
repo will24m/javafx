@@ -1,7 +1,7 @@
 package com.jfxtutor.ui;
 
-import javafx.beans.property.SimpleStringProperty;
-import javafx.beans.property.StringProperty;
+import javafx.beans.property.ReadOnlyStringProperty;
+import javafx.beans.property.ReadOnlyStringWrapper;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 import org.fxmisc.flowless.VirtualizedScrollPane;
@@ -50,7 +50,7 @@ public class EditorPane extends VBox {
                     + "|(?<COMMENT>" + COMMENT_PATTERN + ")");
 
     private final CodeArea codeArea;
-    private final StringProperty text = new SimpleStringProperty("");
+    private final ReadOnlyStringWrapper text = new ReadOnlyStringWrapper("");
 
     public EditorPane() {
         getStyleClass().add("editor-pane");
@@ -76,12 +76,7 @@ public class EditorPane extends VBox {
         codeArea.moveTo(0);
     }
 
-    /** Legacy name used by MainView during Phase 0. */
-    public void showStarterStub(String code) {
-        setText(code);
-    }
-
-    public StringProperty textProperty() { return text; }
+    public ReadOnlyStringProperty textProperty() { return text.getReadOnlyProperty(); }
     public String getText() { return text.get(); }
     public CodeArea getCodeArea() { return codeArea; }
 

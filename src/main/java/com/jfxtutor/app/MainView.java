@@ -47,9 +47,7 @@ public class MainView extends BorderPane {
 
         // Live recompile on every keystroke (debounced inside SnippetRunner).
         editorPane.textProperty().addListener((obs, old, val) -> {
-            if (val != null && !val.isBlank()) {
-                snippetRunner.scheduleRecompile(val);
-            }
+            snippetRunner.scheduleRecompile(val);
         });
 
         // Wire navigator selection → lesson pane + editor + immediate recompile
@@ -85,4 +83,8 @@ public class MainView extends BorderPane {
     public PreviewHost getPreviewHost() { return previewHost; }
     public InspectorPane getInspectorPane() { return inspectorPane; }
     public SnippetRunner getSnippetRunner() { return snippetRunner; }
+
+    public void shutdown() {
+        snippetRunner.shutdown();
+    }
 }

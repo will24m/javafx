@@ -6,13 +6,15 @@ import javafx.stage.Stage;
 
 public class JavaFxTutorApp extends Application {
 
+    private MainView mainView;
+
     public static void main(String[] args) {
         launch(args);
     }
 
     @Override
     public void start(Stage primaryStage) {
-        MainView mainView = new MainView();
+        mainView = new MainView();
         Scene scene = new Scene(mainView, 1200, 800);
         scene.getStylesheets().add(
                 getClass().getResource("/css/app.css").toExternalForm());
@@ -20,5 +22,12 @@ public class JavaFxTutorApp extends Application {
         primaryStage.setTitle("JavaFX Tutor");
         primaryStage.setScene(scene);
         primaryStage.show();
+    }
+
+    @Override
+    public void stop() {
+        if (mainView != null) {
+            mainView.shutdown();
+        }
     }
 }

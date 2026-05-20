@@ -82,9 +82,11 @@ public class LessonNavigator extends VBox {
 
         tree.setRoot(root);
 
-        // Auto-select the first real lesson (index 1 skips the tier header at 0)
         if (!lessons.isEmpty()) {
-            tree.getSelectionModel().select(1);
+            TreeItem<Lesson> firstTier = root.getChildren().isEmpty() ? null : root.getChildren().get(0);
+            if (firstTier != null && !firstTier.getChildren().isEmpty()) {
+                tree.getSelectionModel().select(firstTier.getChildren().get(0));
+            }
         }
     }
 

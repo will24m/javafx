@@ -6,9 +6,11 @@ import javax.tools.JavaCompiler;
 import javax.tools.JavaFileObject;
 import javax.tools.StandardJavaFileManager;
 import javax.tools.ToolProvider;
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Locale;
+import java.util.regex.Pattern;
 
 /**
  * Wraps a user-provided snippet body in a generated class and compiles it
@@ -21,6 +23,10 @@ public class SnippetCompiler {
     public static final String GENERATED_PACKAGE = "_gen";
     public static final String GENERATED_CLASS = "_Snippet";
     public static final String ENTRY_FQCN = GENERATED_PACKAGE + "." + GENERATED_CLASS;
+
+    private static final Pattern FORBIDDEN_PROCESS_EXIT = Pattern.compile(
+            "\\bSystem\\s*\\.\\s*exit\\s*\\("
+                    + "|\\bRuntime\\s*\\.\\s*getRuntime\\s*\\(\\s*\\)\\s*\\.\\s*(exit|halt)\\s*\\(");
 
     private static final String IMPORTS = String.join("\n",
             "import javafx.application.*;",
@@ -52,38 +58,80 @@ public class SnippetCompiler {
 
     /** Compile the user's {@code build()} body into a fresh class. */
     public CompileResult compile(String userBody) {
-        String source = wrap(userBody);
+        if (userBody == null) {
+            userBody = "";
+        }
+        if (FORBIDDEN_PROCESS_EXIT.matcher(userBody).find()) {
+            return CompileResult.failureMessage(
+                    "Process exit calls are disabled in snippets so the tutor can keep running.");
+        }
+
+        WrappedSource wrapped = wrap(userBody);
 
         DiagnosticCollector<JavaFileObject> diagnostics = new DiagnosticCollector<>();
-        StandardJavaFileManager std = compiler.getStandardFileManager(
+        try (StandardJavaFileManager std = compiler.getStandardFileManager(
                 diagnostics, Locale.getDefault(), StandardCharsets.UTF_8);
-        InMemoryJavaFileManager fm = new InMemoryJavaFileManager(std);
+             InMemoryJavaFileManager fm = new InMemoryJavaFileManager(std)) {
 
-        InMemorySourceFile src = new InMemorySourceFile(ENTRY_FQCN, source);
-        JavaCompiler.CompilationTask task = compiler.getTask(
-                null, fm, diagnostics, List.of("-Xlint:none"), null, List.of(src));
+            InMemorySourceFile src = new InMemorySourceFile(ENTRY_FQCN, wrapped.source());
+            JavaCompiler.CompilationTask task = compiler.getTask(
+                    null, fm, diagnostics, compilerOptions(), null, List.of(src));
 
-        boolean ok = task.call();
-        if (!ok) {
-            return CompileResult.failure(List.copyOf(diagnostics.getDiagnostics()));
+            boolean ok = task.call();
+            if (!ok) {
+                return CompileResult.failure(
+                        List.copyOf(diagnostics.getDiagnostics()), wrapped.userLineOffset());
+            }
+            return CompileResult.success(fm.getOutputs(), ENTRY_FQCN);
+        } catch (RuntimeException | IOException e) {
+            return CompileResult.failureMessage("Compiler failure: " + e.getMessage());
         }
-        return CompileResult.success(fm.getOutputs(), ENTRY_FQCN);
     }
 
-    private static String wrap(String userBody) {
+    /**
+     * Build compiler flags so the snippet can see JavaFX classes.
+     * At runtime the JavaFX plugin puts jars on the JVM module path
+     * (jdk.module.path system property), not the classpath, so we must
+     * forward both the module-path and an --add-modules directive.
+     */
+    private static List<String> compilerOptions() {
+        List<String> opts = new java.util.ArrayList<>();
+        opts.add("-Xlint:none");
+
+        String modulePath = System.getProperty("jdk.module.path");
+        if (modulePath != null && !modulePath.isBlank()) {
+            opts.add("--module-path");
+            opts.add(modulePath);
+            opts.add("--add-modules");
+            opts.add("javafx.controls,javafx.fxml,javafx.graphics,javafx.base");
+        }
+
+        // Also include the runtime classpath so any jars there are visible.
+        String cp = System.getProperty("java.class.path");
+        if (cp != null && !cp.isBlank()) {
+            opts.add("-classpath");
+            opts.add(cp);
+        }
+
+        return opts;
+    }
+
+    private static WrappedSource wrap(String userBody) {
         StringBuilder sb = new StringBuilder();
         sb.append("package ").append(GENERATED_PACKAGE).append(";\n");
         sb.append(IMPORTS).append("\n");
         sb.append("public class ").append(GENERATED_CLASS).append(" {\n");
+        int generatedLinesBeforeUser = countLines(sb);
         if (userBodyHasBuild(userBody)) {
             sb.append(userBody).append("\n");
         } else {
             sb.append("public static javafx.scene.Parent build() {\n");
+            generatedLinesBeforeUser++;
             sb.append(userBody).append("\n");
             sb.append("}\n");
         }
         sb.append("}\n");
-        return sb.toString();
+        return new WrappedSource(sb.toString(), generatedLinesBeforeUser);
     }
 
     private static boolean userBodyHasBuild(String body) {
@@ -94,4 +142,16 @@ public class SnippetCompiler {
     public static boolean isError(Diagnostic<?> d) {
         return d.getKind() == Diagnostic.Kind.ERROR;
     }
+
+    private static int countLines(CharSequence text) {
+        int lines = 0;
+        for (int i = 0; i < text.length(); i++) {
+            if (text.charAt(i) == '\n') {
+                lines++;
+            }
+        }
+        return lines;
+    }
+
+    private record WrappedSource(String source, int userLineOffset) {}
 }

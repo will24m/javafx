@@ -20,7 +20,8 @@ The 100-lesson curriculum is the "content" layer that sits on top; the engine is
 | Java version | **Temurin 21 LTS** — install via `brew install --cask temurin@21` |
 | JavaFX version | **21.0.5** via Gradle JavaFX plugin |
 | Build system | **Gradle 8.10 (Kotlin DSL)** with `gradlew` wrapper |
-| Module system | **No JPMS** — classpath only, simplifies dynamic compile/load |
+| Module system | **No JPMS for app code** — classpath app, JavaFX modules supplied by Gradle |
+| Runtime compiler access | Add `--add-modules=jdk.compiler` plus javac package opens/exports to `run` and `test` JVM args |
 | Persistence | **JSON in `~/.javafx-tutor/`** via Jackson |
 | Code editor | **RichTextFX `CodeArea`** with Java syntax highlighting |
 | Testing | **JUnit 5** for logic, **TestFX 4.0.18** for UI |
@@ -38,8 +39,8 @@ The 100-lesson curriculum is the "content" layer that sits on top; the engine is
 │              ├─ LessonNavigator   (left rail, list of 100 lessons)                 │
 │              ├─ LessonPane        (left: markdown + objectives + challenges)       │
 │              ├─ EditorPane        (center-top: RichTextFX CodeArea)                │
-│              ├─ PreviewHost       (center-bottom: StackPane that mounts            │
-│              │                    SandboxScene.getRoot() as a child Node)          │
+│              ├─ PreviewHost       (center-bottom: StackPane with a sandbox wrapper │
+│              │                    that mounts the snippet's returned Parent)       │
 │              └─ InspectorPane     (right: tree + properties + CSS + bounds)        │
 │                                                                                    │
 │  --- engine packages, no JavaFX import in `compile` package -----------------      │
@@ -48,13 +49,13 @@ The 100-lesson curriculum is the "content" layer that sits on top; the engine is
 │    - wraps user code in a class template:                                          │
 │        public class _Snippet { public static Parent build() { ... } }              │
 │    - uses javax.tools.JavaCompiler + InMemoryFileManager                           │
-│    - returns a fresh URLClassLoader rooted at a per-run in-memory class store      │
+│    - returns bytecode captured in memory plus the generated entry class name       │
 │                                                                                    │
 │  engine.runtime.SnippetRunner                                                      │
-│    - takes the compiled Class, calls #build(), gets a Parent                       │
+│    - creates a fresh SnippetClassLoader and calls #build() with a timeout          │
 │    - mounts the Parent into PreviewHost on the FX thread                           │
 │    - holds a single "current" SnippetSession; closes the previous one              │
-│    - SnippetSession.close() detaches Parent, nulls refs, calls ClassLoader.close() │
+│    - SnippetSession.close() detaches Parent, nulls refs, clears loader byte map    │
 │                                                                                    │
 │  engine.inspect.NodeInspector                                                      │
 │    - root-agnostic: walks any Parent (sandbox root OR host MainView root)          │
@@ -81,13 +82,14 @@ The 100-lesson curriculum is the "content" layer that sits on top; the engine is
 
 | Activity | Thread | Mechanism |
 |---|---|---|
-| Editor keystroke → debounce → recompile | FX thread → bg | `PauseTransition` (300 ms) then `Task<CompiledSnippet>` submitted to a single-thread `ExecutorService` |
-| `javax.tools` compilation | bg (compiler executor) | inside `Task.call()` |
-| Mount `Parent` into `PreviewHost` | FX thread | `Task.onSucceeded` |
-| Disposal of previous snippet (`ClassLoader.close`, listener detach) | FX thread, then bg | detach on FX, close CL on bg |
+| Editor keystroke → debounce → recompile | FX thread → bg | `PauseTransition` (350 ms) then a job submitted to a single-thread `ExecutorService` |
+| `javax.tools` compilation | bg (compiler executor) | compile bytecode into memory |
+| Snippet `build()` call | bg (per-build daemon executor) | `Future.get(2s)`; interrupt on timeout and report the error |
+| Mount `Parent` into `PreviewHost` | FX thread | discard stale generations; mount only the newest successful result |
+| Disposal of previous snippet | FX thread | detach node from preview wrapper, null refs, clear custom loader byte map |
 | Inspector property listeners | FX thread (all reads + writes) | properties only mutate on FX |
 
-**Why no second JVM**: a child JVM costs ~500 ms warmup per recompile and complicates inspector/IPC. An in-process `URLClassLoader` per run gives ~50 ms iterate, and disposal is well-understood. Child JVM is the fallback if leak rate proves unmanageable (see Risk #1).
+**Why no second JVM yet**: a child JVM costs warmup time and complicates inspector/IPC. A per-run custom `SnippetClassLoader` that calls `defineClass()` from in-memory bytes keeps iteration fast and disposable. A child JVM remains the fallback for truly hostile or non-interruptible snippets, because in-process Java cannot reliably stop arbitrary code once it ignores interrupts.
 
 ### How the preview gets its own "Scene" without colliding
 
@@ -183,9 +185,12 @@ javafx/
     │   │   ├── engine/
     │   │   │   ├── compile/
     │   │   │   │   ├── SnippetCompiler.java
+    │   │   │   │   ├── CompileResult.java
     │   │   │   │   ├── InMemoryJavaFileManager.java
+    │   │   │   │   ├── InMemorySourceFile.java
     │   │   │   │   └── InMemoryClassFile.java
     │   │   │   ├── runtime/
+    │   │   │   │   ├── SnippetClassLoader.java
     │   │   │   │   ├── SnippetRunner.java
     │   │   │   │   └── SnippetSession.java      (AutoCloseable; CL + Parent)
     │   │   │   ├── inspect/
@@ -240,8 +245,16 @@ java {
 
 javafx {
     version = "21.0.5"
-    modules = listOf("javafx.controls", "javafx.fxml", "javafx.web")
+    modules = listOf("javafx.controls", "javafx.fxml")
 }
+
+val compilerAccessJvmArgs = listOf(
+    "--add-modules=jdk.compiler",
+    "--add-opens=jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED",
+    "--add-opens=jdk.compiler/com.sun.tools.javac.file=ALL-UNNAMED",
+    "--add-exports=jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED",
+    "--add-exports=jdk.compiler/com.sun.tools.javac.file=ALL-UNNAMED"
+)
 
 application {
     mainClass.set("com.jfxtutor.app.JavaFxTutorApp")
@@ -250,6 +263,8 @@ application {
 dependencies {
     implementation("org.fxmisc.richtext:richtextfx:0.11.2")
     implementation("com.fasterxml.jackson.core:jackson-databind:2.17.2")
+    implementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.17.2")
+    implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.17.2")
     implementation("org.commonmark:commonmark:0.22.0")
     implementation("org.slf4j:slf4j-simple:2.0.13")
 
@@ -257,9 +272,17 @@ dependencies {
     testImplementation("org.junit.jupiter:junit-jupiter")
     testImplementation("org.testfx:testfx-core:4.0.18")
     testImplementation("org.testfx:testfx-junit5:4.0.18")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
-tasks.test { useJUnitPlatform() }
+tasks.withType<JavaExec>().configureEach {
+    jvmArgs(compilerAccessJvmArgs)
+}
+
+tasks.withType<Test>().configureEach {
+    useJUnitPlatform()
+    jvmArgs(compilerAccessJvmArgs)
+}
 ```
 
 ---
@@ -289,26 +312,46 @@ Files to create:
 
 **Milestone**: click any of three lessons in the left rail, see its markdown body rendered.
 
-### Phase 2 — Embedded editor + safe live preview (target: 3 days, the heart of the project)
+### Phase 2 — Embedded editor + safe live preview (target: 2-3 weeks, the heart of the project)
 
 - `engine/compile/InMemoryClassFile.java` — `JavaFileObject` backed by `ByteArrayOutputStream`
+- `engine/compile/InMemorySourceFile.java` — source string as a `JavaFileObject`
 - `engine/compile/InMemoryJavaFileManager.java` — `ForwardingJavaFileManager` that captures `output()` calls
 - `engine/compile/SnippetCompiler.java`:
   - wraps user body in `package _gen; import javafx.scene.*; ... public class _Snippet { public static Parent build() { <USER_BODY> } }`
   - calls `ToolProvider.getSystemJavaCompiler().getTask(...)` with our file manager
-  - on success, returns `CompileResult(URLClassLoader, "_gen._Snippet")`; on failure returns `List<Diagnostic>`
-- `engine/runtime/SnippetSession.java` — `AutoCloseable`, holds `URLClassLoader` and the mounted `Parent`; `close()` detaches Parent from its parent on FX, sets `getChildren().clear()` on it, then closes CL on bg executor
+  - forwards runtime classpath/module-path and remaps generated diagnostics back to user snippet lines
+  - on success, returns `CompileResult(Map<String, byte[]>, "_gen._Snippet")`; on failure returns diagnostics or a clear compiler error message
+- `engine/runtime/SnippetClassLoader.java` — custom loader that calls `defineClass()` from the in-memory byte map; `URLClassLoader` is not appropriate because there are no class files or jars on disk
+- `engine/runtime/SnippetSession.java` — `AutoCloseable`, holds `SnippetClassLoader` and the mounted `Parent`; `close()` detaches Parent from its parent on FX and clears loader byte refs
 - `engine/runtime/SnippetRunner.java`:
   - debounced via `PauseTransition`
   - submits compile to `Executors.newSingleThreadExecutor()` (single thread guarantees ordering)
-  - on success: dispose previous session, build new Parent via reflection, mount in `PreviewHost`
+  - invokes `build()` on a per-generation daemon executor with a 2-second `Future.get` timeout and `shutdownNow()` on timeout
+  - discards stale generations before mounting so older compiles cannot overwrite newer edits
+  - on success: dispose previous session, mount new Parent in `PreviewHost`
   - on failure: render diagnostics into a small banner overlay on `PreviewHost`
 - `EditorPane` becomes a real `CodeArea` with RichTextFX Java highlighting (use the standard `RegexJavaHighlighter` pattern from RichTextFX demos)
 - `editor-java.css` defines the token styles
 
 **Milestone**: edit a `Label` text in the editor, see the preview update within ~400 ms.
 
-### Phase 3 — Inspector + dynamic mirror mode (target: 2 days)
+### Phase 3 — Challenge runner MVP + progress persistence (target: 1 week)
+
+- `engine/challenge/{Assertions,ChallengeRunner}.java` lands before the inspector so learners can validate work early
+- v1 can use hardcoded Java assertion classes per lesson before the DSL exists
+- `AssertionParser` follows with explicit `ClassResolver` scope:
+  - maps common short names such as `VBox`, `HBox`, `StackPane`, `Label`, and `Button` to JavaFX classes
+  - rejects ambiguous or unknown class names with lesson-author-facing errors like `Unknown class 'Vbox'; did you mean 'VBox'?`
+  - keeps a hardcoded import map first; reflection-based lookup is a later convenience
+- `data/progress/ProgressStore.java` with Jackson, including `jackson-datatype-jsr310` for `Instant`
+- Atomic writes create `state.json.tmp` inside `~/.javafx-tutor/` before `Files.move(..., ATOMIC_MOVE)`, because atomic moves only work reliably within the same filesystem
+- `LessonPane` gains a "Check challenge" button per challenge, badge turns green on pass
+- On lesson switch: save current snippet; reload destination lesson's snippet if previously edited
+
+**Milestone**: complete lesson 001's challenge, close and reopen the app, see the green check and your edited snippet still there.
+
+### Phase 4 — Inspector + dynamic mirror mode (target: 1-2 weeks)
 
 - `engine/inspect/NodeRef.java` — immutable handle: `Node`, computed path, snapshot of CSS classes, bounds
 - `engine/inspect/PropertyWatcher.java` — `Map<WeakReference<Node>, List<ChangeListener>>`; method `watch(Node, propertyName)` returns an `ObservableValue` proxy
@@ -317,23 +360,22 @@ Files to create:
   - hover on preview → highlight overlay (translucent rectangle over `localToScene(getBoundsInLocal())`)
   - selected node → property table on the right with live values
 - `InspectorPane` has a mode toggle: "Preview" (root = `PreviewHost.snippetRoot`) vs. "Mirror" (root = `MainView` itself)
-- In Mirror mode, an opt-in keybind (Ctrl-Alt-click) on any host node selects it in the inspector
+- In Mirror mode, selection is opt-in through an "inspect pointer" toggle plus Ctrl-Alt-click. The overlay must be click-through when inactive, and when active it should show the deepest pick result plus its parent chain so scroll panes, cells, and border-pane empty regions are not ambiguous.
+- Hover highlight in Mirror mode is throttled and disabled while controls are being dragged or text is being edited, so the inspector does not fight normal app interaction.
 
 **Milestone**: drag the host window edge, watch the host MainView's `widthProperty` tick in the inspector in Mirror mode.
 
-### Phase 4 — Challenge runner + progress persistence (target: 2 days)
+### Phase 5 — Curriculum content (target: beta at 20 lessons; full product at 100)
 
-- `engine/challenge/{Assertions,AssertionParser,ChallengeRunner}.java`
-- `data/progress/ProgressStore.java` with Jackson, atomic write (write to `state.json.tmp`, `Files.move(..., ATOMIC_MOVE)`)
-- `LessonPane` gains a "Check challenge" button per challenge, badge turns green on pass
-- On any challenge pass: persist completion + auto-save snippet to `~/.javafx-tutor/snippets/<id>.java`
-- On lesson switch: save current snippet; reload destination lesson's snippet if previously edited
+The engine is only useful once the content is shippable. Completion criteria:
 
-**Milestone**: complete lesson 001's challenge, close and reopen the app, see the green check and your edited snippet still there.
+- **Alpha**: 5 foundations lessons, all with starter snippets and passing challenge assertions.
+- **Beta / minimum viable curriculum**: 20 lessons: 10 foundations, 6 layouts, 4 controls. These must teach enough JavaFX for a learner to build a small form-based app.
+- **1.0**: all 100 lessons, each with frontmatter, starter snippet, one primary challenge, one stretch challenge, and a reviewer pass for code accuracy.
 
-### Phase 5 — The 100 lessons (target: ongoing; this plan does NOT write them)
+Content workflow: draft lessons in batches of 5, run every starter snippet through the live preview, run every challenge assertion against both the starter and expected solution, then review for learner pacing before merging.
 
-Outline only — concrete lesson content authored over time. Tier file counts and themes:
+Tier file counts and themes:
 
 | Tier | Range | Count | What fills it |
 |---|---|---|---|
@@ -365,56 +407,46 @@ Outline only — concrete lesson content authored over time. Tier file counts an
 ## Risks (top 5) and mitigations
 
 1. **ClassLoader leaks from per-edit recompiles**
-   - *Mitigation*: every `SnippetSession` is `AutoCloseable`; `SnippetRunner` holds at most one. Detach `Parent` from scene graph before nulling refs (otherwise the scene retains it). Call `URLClassLoader.close()` on a bg executor. Add a heap-watch dev mode: log `MemoryMXBean.getHeapMemoryUsage()` every 30 s; if it grows monotonically across 50 recompiles, fall back to **child-JVM** model (already scoped as a fallback).
+   - *Mitigation*: every `SnippetSession` is `AutoCloseable`; `SnippetRunner` holds at most one. Detach `Parent` from scene graph before nulling refs (otherwise the scene retains it). Clear the custom `SnippetClassLoader` byte map. Add a heap-watch dev mode: log `MemoryMXBean.getHeapMemoryUsage()` every 30 s; if it grows monotonically across 50 recompiles, fall back to **child-JVM** model.
    - *Detection test*: a JUnit test that recompiles 200 distinct snippets and asserts `WeakReference<ClassLoader>` gets GC'd after `System.gc()`.
 
 2. **`Platform.runLater` deadlocks or ordering bugs**
-   - *Mitigation*: single rule — compilation is the **only** thing off-thread; mounting, listener wiring, and disposal of node references are FX-thread. Never block FX thread waiting for the compile executor. Use `Task.setOnSucceeded` / `setOnFailed`, not `Future.get()`.
+   - *Mitigation*: never block the FX thread waiting for compile or `build()`. Compile and build off-thread, then mount only the newest generation on the FX thread. Listener wiring and node disposal stay on FX.
    - *Detection*: TestFX test that fires 20 rapid edits and asserts the final preview matches the last edit (proves single-thread executor ordering).
 
 3. **Security of executing arbitrary user-written code**
-   - *Reality check*: this is a **local single-user** tool. The user is writing code to teach themselves; the threat model is "I accidentally wrote `System.exit(0)`", not malice. Therefore: no sandbox/SecurityManager (deprecated in 21 anyway). Mitigations: (a) catch `Throwable` around `build()` call and render in error banner — including `ExceptionInInitializerError` from static blocks; (b) timeout: cancel the `Task` if `build()` runs >2 s; (c) explicit allow-list of imports auto-injected into the wrapper (`javafx.scene.*`, `javafx.scene.control.*`, `javafx.scene.layout.*`, `javafx.geometry.*`, `javafx.beans.*`). User can `import` more but must type it.
-   - *Out of scope*: protecting against malicious snippets the user pastes from the internet. Lesson 0 will warn.
+   - *Reality check*: this is a **local single-user** tool. The user is writing code to teach themselves; the threat model is "I accidentally wrote `System.exit(0)`", not malice. Therefore: no SecurityManager (deprecated in 21 anyway). Mitigations: (a) preflight reject obvious process-exit calls; (b) catch `Throwable` around `build()` and render in error banner; (c) run `build()` through a `Future` on a daemon executor, use `get(2s)`, `cancel(true)`, and `shutdownNow()` on timeout; (d) explicit default imports for common JavaFX APIs.
+   - *Remaining risk*: Java cannot safely kill a non-interruptible in-process infinite loop. If this becomes common, move snippet execution to a child JVM and communicate the scene description or screenshot back to the host.
 
 4. **CSS reload pitfalls + dynamic mirror collisions**
    - The host app and the sandbox share a `Scene` (the sandbox `Parent` is mounted inside the host scene). Sandbox CSS via `Parent.getStylesheets().add(...)` is scoped to that subtree — good. But a user's `Node.setStyle(...)` with an `-fx-base` change can bleed into the host through `:root` cascades.
-   - *Mitigation*: wrap the sandbox `Parent` in a `Region` with `getStyleClass().add("sandbox-root")` and write host CSS rules to use `.host-root` selectors. Document: "lesson CSS is scoped under `.sandbox-root`".
+   - *Mitigation*: mount the sandbox `Parent` inside a dedicated wrapper with `getStyleClass().add("sandbox-root")` and write host CSS rules to use `.host-root` selectors. Document: "lesson CSS is scoped under `.sandbox-root`".
 
 5. **RichTextFX + JavaFX 21 compatibility on Apple Silicon**
    - RichTextFX 0.11.2 supports JavaFX 21 but historically has had thread-assertion issues. The `flowless` transitive dep occasionally errors on macOS retina with certain font configs.
-   - *Mitigation*: pin to `0.11.2`, add a `SmokeUiTest` in Phase 0 that just opens a `CodeArea` and types text via TestFX. If it fails on arm64, fallback is `org.fxmisc.richtext:richtextfx:0.11.0` or — last resort — replacing with a `TextArea` + manual highlighting (loses inline syntax styling).
+   - *Mitigation*: pin to `0.11.2`, keep a `SmokeUiTest` that opens a `CodeArea`, loads the starter snippet, and exercises compile/error paths. If it fails on arm64, fallback is `org.fxmisc.richtext:richtextfx:0.11.0` or — last resort — replacing with a `TextArea` + manual highlighting.
 
 ---
 
-## Verification — Phase 0 done means
+## Verification — current baseline
 
 Run from repo root:
 
 ```bash
 brew install --cask temurin@21              # one time
 ./gradlew --version                          # confirms wrapper works
+./gradlew test --rerun-tasks --warning-mode all
 ./gradlew run                                # launches the app
 ```
 
 You should see:
 - A window ~1200×800 titled "JavaFX Tutor".
-- Four panes: left rail with "001 — What is a Stage?" highlighted; left-center showing the markdown body of lesson 001; center-top showing a non-editable `CodeArea` (or `TextArea` for Phase 0) with the lesson's starter snippet; center-bottom showing a `Label` with text "Hello, JavaFX" inside a `StackPane`; right pane showing a placeholder "Inspector".
+- Four panes: left rail with "001 — What is a Stage?" highlighted; left-center showing the markdown body of lesson 001; center-top showing an editable `CodeArea` with syntax highlighting; center-bottom showing live preview output from the compiled starter snippet; right pane showing a placeholder "Inspector".
+- Blank or invalid editor contents should show an error overlay without unmounting the last good preview.
+- Slow `build()` snippets should time out and show an error instead of freezing the host UI.
 - Window resizes cleanly; no exceptions in console.
 
-TestFX test to add in Phase 0 (`src/test/java/com/jfxtutor/ui/SmokeUiTest.java`):
-
-```java
-@Test
-void launchesAndShowsLessonOne(FxRobot robot) {
-    Stage stage = robot.window(0).getScene().getWindow();
-    assertThat(robot.lookup(".lesson-title").queryLabeled().getText())
-        .isEqualTo("What is a Stage?");
-    assertThat(robot.lookup("#previewHost .label").queryLabeled().getText())
-        .isEqualTo("Hello, JavaFX");
-}
-```
-
-Run with `./gradlew test`. Both must pass before starting Phase 1.
+`SmokeUiTest`, `SnippetCompilerTest`, and `CurriculumLoaderTest` must pass before expanding the lesson set or inspector work.
 
 ---
 
@@ -439,5 +471,3 @@ Run with `./gradlew test`. Both must pass before starting Phase 1.
 - **App icon**: needed for jpackage in Phase 6. I assumed you'll draw / generate one before Phase 6. Not blocking earlier phases.
 - **Theme**: dark theme included in CSS, but no theme switcher built in Phase 0–4. Lesson 077 will add it.
 - **Internationalization**: out of scope. English-only. Lessons that mention `ResourceBundle` show the API without translating the app.
-
-Ready to begin Phase 0 once you approve.

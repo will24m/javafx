@@ -23,12 +23,17 @@ public class CurriculumLoader {
     public static List<Lesson> loadAll() {
         List<String> paths = readIndex();
         List<Lesson> lessons = new ArrayList<>();
+        List<String> failures = new ArrayList<>();
         for (String path : paths) {
             try {
                 lessons.add(loadLesson(path));
             } catch (Exception e) {
-                System.err.println("Failed to load lesson at " + path + ": " + e.getMessage());
+                failures.add(path + ": " + e.getMessage());
             }
+        }
+        if (!failures.isEmpty()) {
+            throw new IllegalStateException("Failed to load curriculum:\n"
+                    + String.join("\n", failures));
         }
         lessons.sort((a, b) -> {
             int tierCmp = a.meta.tier.compareTo(b.meta.tier);
@@ -69,6 +74,29 @@ public class CurriculumLoader {
         // Body starts after the closing ---\n
         String body = raw.substring(end + 4).trim();
         LessonFrontmatter meta = YAML.readValue(yaml, LessonFrontmatter.class);
+        validate(meta);
         return new Lesson(meta, body);
+    }
+
+    private static void validate(LessonFrontmatter meta) {
+        if (meta == null) {
+            throw new IllegalArgumentException("Missing frontmatter values");
+        }
+        if (isBlank(meta.id)) {
+            throw new IllegalArgumentException("Missing required frontmatter field: id");
+        }
+        if (isBlank(meta.tier)) {
+            throw new IllegalArgumentException("Missing required frontmatter field: tier");
+        }
+        if (meta.order <= 0) {
+            throw new IllegalArgumentException("Invalid required frontmatter field: order");
+        }
+        if (isBlank(meta.title)) {
+            throw new IllegalArgumentException("Missing required frontmatter field: title");
+        }
+    }
+
+    private static boolean isBlank(String value) {
+        return value == null || value.isBlank();
     }
 }
