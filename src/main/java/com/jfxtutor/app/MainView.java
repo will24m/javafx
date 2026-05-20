@@ -1,5 +1,6 @@
 package com.jfxtutor.app;
 
+import com.jfxtutor.engine.runtime.SnippetRunner;
 import com.jfxtutor.ui.EditorPane;
 import com.jfxtutor.ui.InspectorPane;
 import com.jfxtutor.ui.LessonNavigator;
@@ -16,6 +17,7 @@ public class MainView extends BorderPane {
     private final EditorPane editorPane;
     private final PreviewHost previewHost;
     private final InspectorPane inspectorPane;
+    private final SnippetRunner snippetRunner;
 
     public MainView() {
         getStyleClass().add("host-root");
@@ -26,6 +28,10 @@ public class MainView extends BorderPane {
         this.editorPane = new EditorPane();
         this.previewHost = new PreviewHost();
         this.inspectorPane = new InspectorPane();
+
+        this.snippetRunner = new SnippetRunner(
+                previewHost::setSnippetRoot,
+                previewHost::showError);
 
         SplitPane center = new SplitPane();
         center.setOrientation(Orientation.VERTICAL);
@@ -39,16 +45,21 @@ public class MainView extends BorderPane {
 
         setCenter(root);
 
-        // Phase 0 stub: render Hello World in the preview pane on startup.
-        previewHost.showHelloWorldStub();
+        // Live recompile on every keystroke (debounced inside SnippetRunner).
+        editorPane.textProperty().addListener((obs, old, val) -> {
+            if (val != null && !val.isBlank()) {
+                snippetRunner.scheduleRecompile(val);
+            }
+        });
 
-        // Wire navigator selection → lesson pane + editor
+        // Wire navigator selection → lesson pane + editor + immediate recompile
         lessonNavigator.selectedLessonProperty().addListener((obs, old, lesson) -> {
             if (lesson == null) return;
             lessonPane.showLesson(lesson);
             String snippet = lesson.meta.starterSnippet != null
                     ? lesson.meta.starterSnippet : "";
-            editorPane.showStarterStub(snippet);
+            editorPane.setText(snippet);
+            snippetRunner.recompileNow(snippet);
         });
 
         // Show whichever lesson the navigator auto-selected at startup
@@ -57,15 +68,14 @@ public class MainView extends BorderPane {
             lessonPane.showLesson(initial);
             String snippet = initial.meta.starterSnippet != null
                     ? initial.meta.starterSnippet : "";
-            editorPane.showStarterStub(snippet);
+            editorPane.setText(snippet);
+            snippetRunner.recompileNow(snippet);
         } else {
-            // Fallback if curriculum is empty
             lessonPane.showLessonStub("001-what-is-a-stage", "What is a Stage?");
-            editorPane.showStarterStub(
-                    "public static Parent build() {\n"
-                            + "    Label l = new Label(\"Hello, JavaFX\");\n"
-                            + "    return new StackPane(l);\n"
-                            + "}\n");
+            String stub = "Label l = new Label(\"Hello, JavaFX\");\n"
+                    + "return new StackPane(l);\n";
+            editorPane.setText(stub);
+            snippetRunner.recompileNow(stub);
         }
     }
 
@@ -74,4 +84,5 @@ public class MainView extends BorderPane {
     public EditorPane getEditorPane() { return editorPane; }
     public PreviewHost getPreviewHost() { return previewHost; }
     public InspectorPane getInspectorPane() { return inspectorPane; }
+    public SnippetRunner getSnippetRunner() { return snippetRunner; }
 }
