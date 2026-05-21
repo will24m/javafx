@@ -8,6 +8,7 @@ import com.jfxtutor.ui.InteractiveIde;
 import com.jfxtutor.ui.LessonNavigator;
 import com.jfxtutor.ui.LessonPane;
 import com.jfxtutor.ui.PreviewHost;
+import com.jfxtutor.util.AppLog;
 import javafx.geometry.Insets;
 import javafx.geometry.Orientation;
 import javafx.geometry.Pos;
@@ -18,6 +19,17 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 
+/**
+ * Main application shell.
+ *
+ * This class owns the screen-level composition:
+ * - top header with the current lesson breadcrumb,
+ * - center SplitPane with navigator, lesson text, editor/preview, and inspector,
+ * - bottom status bar with lightweight progress information.
+ *
+ * It deliberately does not compile snippets itself. Instead, it wires panes
+ * together and lets InteractiveIde/SnippetRunner own the live-code pipeline.
+ */
 public class MainView extends BorderPane {
 
     private final LessonNavigator lessonNavigator;
@@ -31,9 +43,13 @@ public class MainView extends BorderPane {
     private int totalLessons;
 
     public MainView() {
+        AppLog.info("ui", "Constructing MainView shell: header, workspace columns, and status bar.");
         getStyleClass().add("host-root");
         setId("mainView");
 
+        // Each pane is self-contained, but MainView is where their data flow
+        // is connected: lesson selection updates lesson content, editor code,
+        // preview output, and inspector root.
         this.lessonNavigator = new LessonNavigator();
         this.lessonPane = new LessonPane();
         this.ide = new InteractiveIde();
@@ -84,25 +100,36 @@ public class MainView extends BorderPane {
         setBottom(statusBar);
 
         // ---- Wire selection events ----
+        // The navigator exposes a selectedLesson property. When that property
+        // changes, MainView broadcasts the new Lesson to the educational text
+        // pane and the live IDE. This is the central "lesson changed" pathway.
         lessonNavigator.selectedLessonProperty().addListener((obs, old, lesson) -> {
             if (lesson == null) return;
+            AppLog.info("ui", "Lesson selected: " + lesson.meta.id + " - " + lesson.meta.title);
             lessonPane.showLesson(lesson);
             ide.loadLesson(lesson);
             updateHeaderAndStatus(lesson);
         });
 
         // Refresh the Inspector whenever a new snippet root is mounted.
+        // The inspector does not know about compilation; it only receives the
+        // latest JavaFX Parent once the IDE successfully mounts one.
         ide.mountedRootProperty().addListener((obs, old, root) ->
                 inspectorPane.setRoot(root));
 
         // Initial state
+        // LessonNavigator loads the curriculum during construction, so by the
+        // time we get here it may already have a first selected lesson.
         this.totalLessons = lessonNavigator.getLessonCount();
+        AppLog.info("ui", "Navigator reports " + totalLessons + " lessons loaded.");
         var initial = lessonNavigator.getSelectedLesson();
         if (initial != null) {
+            AppLog.info("ui", "Opening initial lesson: " + initial.meta.id + " - " + initial.meta.title);
             lessonPane.showLesson(initial);
             ide.loadLesson(initial);
             updateHeaderAndStatus(initial);
         } else {
+            AppLog.info("ui", "No curriculum lesson was selected; showing fallback lesson stub.");
             lessonPane.showLessonStub("001-what-is-a-stage", "What is a Stage?");
             statusRight.setText(totalLessons + " lessons loaded");
         }
@@ -130,6 +157,7 @@ public class MainView extends BorderPane {
     public SnippetRunner getSnippetRunner() { return ide.getSnippetRunner(); }
 
     public void shutdown() {
+        AppLog.info("ui", "MainView shutdown requested; forwarding cleanup to InteractiveIde.");
         ide.shutdown();
     }
 }

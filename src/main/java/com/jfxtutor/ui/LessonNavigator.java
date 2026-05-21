@@ -2,6 +2,7 @@ package com.jfxtutor.ui;
 
 import com.jfxtutor.data.curriculum.CurriculumLoader;
 import com.jfxtutor.data.curriculum.Lesson;
+import com.jfxtutor.util.AppLog;
 import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.geometry.Insets;
@@ -22,6 +23,13 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
+/**
+ * Left-side curriculum browser.
+ *
+ * The navigator loads every Lesson once, groups lessons by their tier, and
+ * exposes the selected lesson through selectedLessonProperty(). MainView listens
+ * to that property and updates the rest of the application.
+ */
 public class LessonNavigator extends VBox {
 
     private final TreeView<Lesson> tree;
@@ -30,6 +38,7 @@ public class LessonNavigator extends VBox {
     private List<Lesson> allLessons = List.of();
 
     public LessonNavigator() {
+        AppLog.info("navigator", "Creating lesson navigator and search field.");
         getStyleClass().add("lesson-navigator");
         setId("lessonNavigator");
 
@@ -48,6 +57,9 @@ public class LessonNavigator extends VBox {
         tree.getStyleClass().add("lesson-tree");
         VBox.setVgrow(tree, Priority.ALWAYS);
 
+        // The TreeView uses null values for tier/group rows and real Lesson
+        // values for leaf rows. The custom cell renderer turns that convention
+        // into friendly labels and tooltips.
         tree.setCellFactory(tv -> new TreeCell<Lesson>() {
             @Override
             protected void updateItem(Lesson lesson, boolean empty) {
@@ -80,6 +92,8 @@ public class LessonNavigator extends VBox {
             }
         });
 
+        // Only leaf rows represent actual lessons. Selecting a tier heading
+        // should not change the current lesson, so we guard on getValue().
         tree.getSelectionModel().selectedItemProperty().addListener((obs, old, sel) -> {
             if (sel != null && sel.getValue() != null) {
                 selectedLesson.set(sel.getValue());
@@ -91,18 +105,25 @@ public class LessonNavigator extends VBox {
     }
 
     private void populate() {
+        AppLog.info("navigator", "Loading curriculum into the navigator tree.");
         this.allLessons = CurriculumLoader.loadAll();
         rebuildTree(allLessons, null);
         if (!allLessons.isEmpty()) {
+            AppLog.info("navigator", "Selecting the first lesson so the app opens with content.");
             selectFirstLeaf();
         }
     }
 
     private void rebuildTree(List<Lesson> lessons, Lesson preserveSelection) {
+        // Rebuild from scratch on search changes. The lesson list is small, and
+        // rebuilding keeps filtering logic simpler than mutating TreeItems in place.
+        AppLog.info("navigator", "Rebuilding curriculum tree with " + lessons.size() + " visible lesson(s).");
         TreeItem<Lesson> root = new TreeItem<>();
         Map<String, TreeItem<Lesson>> tiers = new LinkedHashMap<>();
         for (Lesson lesson : lessons) {
             String tier = lesson.meta.tier;
+            // LinkedHashMap preserves first-seen tier order, which follows the
+            // globally sorted curriculum order.
             tiers.computeIfAbsent(tier, t -> {
                 TreeItem<Lesson> tierItem = new TreeItem<>(null, new Label(t));
                 tierItem.setExpanded(true);
@@ -128,10 +149,12 @@ public class LessonNavigator extends VBox {
 
     private void applyFilter(String query) {
         if (query == null || query.isBlank()) {
+            AppLog.info("navigator", "Search cleared; restoring the full curriculum tree.");
             rebuildTree(allLessons, getSelectedLesson());
             return;
         }
         String needle = query.toLowerCase(Locale.ROOT).trim();
+        AppLog.info("navigator", "Filtering lessons for search text: \"" + needle + "\".");
         List<Lesson> filtered = new ArrayList<>();
         for (Lesson lesson : allLessons) {
             if (lesson.meta.title.toLowerCase(Locale.ROOT).contains(needle)
@@ -141,10 +164,17 @@ public class LessonNavigator extends VBox {
             }
         }
         rebuildTree(filtered, null);
-        if (!filtered.isEmpty()) selectFirstLeaf();
+        if (!filtered.isEmpty()) {
+            AppLog.info("navigator", "Search matched " + filtered.size() + " lesson(s); selecting first match.");
+            selectFirstLeaf();
+        } else {
+            AppLog.info("navigator", "Search returned no lesson matches.");
+        }
     }
 
     private void selectFirstLeaf() {
+        // The first visible leaf is the earliest lesson in the current tree
+        // because allLessons is already sorted by LessonFrontmatter.order.
         TreeItem<Lesson> root = tree.getRoot();
         if (root == null || root.getChildren().isEmpty()) return;
         TreeItem<Lesson> firstTier = root.getChildren().get(0);

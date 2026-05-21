@@ -1,5 +1,6 @@
 package com.jfxtutor.ui;
 
+import com.jfxtutor.util.AppLog;
 import javafx.geometry.Pos;
 import javafx.scene.Parent;
 import javafx.scene.control.Label;
@@ -21,6 +22,7 @@ public class PreviewHost extends StackPane {
     private final Label errorLabel;
 
     public PreviewHost() {
+        AppLog.info("preview", "Creating preview sandbox and error overlay.");
         getStyleClass().add("preview-host");
         setId("previewHost");
         setPadding(new javafx.geometry.Insets(10));
@@ -44,6 +46,12 @@ public class PreviewHost extends StackPane {
 
     /** Replace the mounted snippet root. Must be called on FX thread. */
     public void setSnippetRoot(Parent root) {
+        // The sandbox container is the only place user snippets are inserted.
+        // Replacing its children keeps old snippet UIs from lingering after a
+        // successful compile.
+        AppLog.info("preview", root == null
+                ? "Clearing snippet preview root."
+                : "Mounting new snippet root: " + root.getClass().getSimpleName() + ".");
         this.currentRoot = root;
         if (root == null) {
             sandboxContainer.getChildren().clear();
@@ -57,6 +65,9 @@ public class PreviewHost extends StackPane {
 
     /** Show an error banner over the current preview without unmounting it. */
     public void showError(String message) {
+        // Keeping the previous successful preview visible makes compile errors
+        // less disorienting: learners can still see the last working state.
+        AppLog.info("preview", "Displaying compile/runtime error overlay.");
         errorLabel.setText(message);
         errorOverlay.setVisible(true);
         errorOverlay.setManaged(true);
@@ -64,6 +75,7 @@ public class PreviewHost extends StackPane {
     }
 
     public void clearError() {
+        // A successful mount clears any stale error from a previous failed run.
         errorLabel.setText("");
         errorOverlay.setVisible(false);
         errorOverlay.setManaged(false);

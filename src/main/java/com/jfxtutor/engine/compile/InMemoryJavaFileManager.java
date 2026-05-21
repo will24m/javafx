@@ -13,6 +13,8 @@ public class InMemoryJavaFileManager extends ForwardingJavaFileManager<JavaFileM
     private final Map<String, InMemoryClassFile> outputs = new HashMap<>();
 
     public InMemoryJavaFileManager(JavaFileManager delegate) {
+        // ForwardingJavaFileManager lets javac keep using the normal JDK lookup
+        // behavior while we intercept only generated .class outputs.
         super(delegate);
     }
 
@@ -21,12 +23,16 @@ public class InMemoryJavaFileManager extends ForwardingJavaFileManager<JavaFileM
                                                String className,
                                                JavaFileObject.Kind kind,
                                                FileObject sibling) {
+        // javac calls this once for every generated class. Inner classes become
+        // separate entries too, so the class loader receives a complete byte map.
         InMemoryClassFile file = new InMemoryClassFile(className);
         outputs.put(className, file);
         return file;
     }
 
     public Map<String, byte[]> getOutputs() {
+        // Return plain byte arrays rather than exposing the mutable class file
+        // objects used during compilation.
         Map<String, byte[]> result = new HashMap<>();
         outputs.forEach((name, file) -> result.put(name, file.getBytes()));
         return result;

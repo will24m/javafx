@@ -1,5 +1,6 @@
 package com.jfxtutor.ui;
 
+import com.jfxtutor.util.AppLog;
 import javafx.application.Platform;
 import javafx.beans.InvalidationListener;
 import javafx.beans.property.ReadOnlyObjectWrapper;
@@ -46,6 +47,7 @@ public class InspectorPane extends VBox {
     private final ChangeListener<Number> rootSizeListener = (o, a, b) -> updateSummary(currentRoot);
 
     public InspectorPane() {
+        AppLog.info("inspector", "Creating scene graph inspector tree and property table.");
         getStyleClass().add("inspector-pane");
         setId("inspectorPane");
 
@@ -104,6 +106,8 @@ public class InspectorPane extends VBox {
 
         getChildren().addAll(header, summary, split);
 
+        // Selection changes decide which node the property table polls.
+        // The tree item stores the actual JavaFX Node, not a copy.
         tree.getSelectionModel().selectedItemProperty().addListener((obs, old, sel) -> {
             observeNode(sel == null ? null : sel.getValue());
             refreshTable();
@@ -116,6 +120,9 @@ public class InspectorPane extends VBox {
 
     /** Re-root the inspector. Call after each snippet mount. */
     public void setRoot(Parent root) {
+        AppLog.info("inspector", root == null
+                ? "Inspector root cleared."
+                : "Inspecting new preview root: " + root.getClass().getSimpleName() + ".");
         detachRootSizeListener();
         observeNode(null);
         this.currentRoot = root;
@@ -138,6 +145,8 @@ public class InspectorPane extends VBox {
     }
 
     private void observeNode(Node node) {
+        // Remove listeners from the previous selected node before observing the
+        // new one. Without this, stale nodes would continue triggering refreshes.
         if (observedNode != null) {
             observedNode.boundsInParentProperty().removeListener(selectedBoundsListener);
             observedNode.boundsInLocalProperty().removeListener(selectedBoundsListener);
@@ -146,6 +155,7 @@ public class InspectorPane extends VBox {
         }
         observedNode = node;
         if (node != null) {
+            AppLog.info("inspector", "Property table is now following node: " + describe(node));
             node.boundsInParentProperty().addListener(selectedBoundsListener);
             node.boundsInLocalProperty().addListener(selectedBoundsListener);
             node.layoutXProperty().addListener(selectedBoundsListener);
@@ -172,6 +182,9 @@ public class InspectorPane extends VBox {
     // ─────────────────────────────────────────────────────────────────────────
 
     private TreeItem<Node> buildTree(Node node) {
+        // Recursively mirror the JavaFX scene graph into TreeItems. Parent nodes
+        // expose children through getChildrenUnmodifiable(), which is safe for
+        // read-only inspection.
         TreeItem<Node> item = new TreeItem<>(node);
         if (node instanceof Parent parent) {
             for (Node child : parent.getChildrenUnmodifiable()) {
@@ -187,6 +200,8 @@ public class InspectorPane extends VBox {
     }
 
     private int countDescendants(Node node) {
+        // Count includes the root node itself, so a single Label preview reports
+        // as one node rather than zero descendants.
         int n = 1;
         if (node instanceof Parent parent) {
             for (Node child : parent.getChildrenUnmodifiable()) {
@@ -201,6 +216,8 @@ public class InspectorPane extends VBox {
     // ─────────────────────────────────────────────────────────────────────────
 
     private void updateSummary(Node root) {
+        // Root size is meaningful only for Regions because plain Parent does not
+        // have width/height properties.
         if (root == null) {
             summary.setText("No preview mounted.");
             return;
@@ -213,6 +230,9 @@ public class InspectorPane extends VBox {
     }
 
     private void refreshTable() {
+        // Pull a fresh snapshot from the selected node. Bounds and layout values
+        // can change after every JavaFX pulse, so this table is intentionally
+        // rebuilt rather than cached.
         Node node = observedNode;
         List<PropertyRow> rows = new ArrayList<>();
         if (node == null) {
@@ -237,12 +257,16 @@ public class InspectorPane extends VBox {
         rows.add(row("opacity", formatDouble(node.getOpacity())));
 
         if (node instanceof Region region) {
+            // Region-specific values matter for layout lessons because VBox,
+            // HBox, BorderPane, etc. all inherit from Region.
             rows.add(row("prefSize", String.format(Locale.ROOT, "%s × %s",
                     formatPref(region.getPrefWidth()),
                     formatPref(region.getPrefHeight()))));
             rows.add(row("padding",  region.getPadding().toString()));
         }
         if (node instanceof javafx.scene.control.Labeled labeled) {
+            // Labels, Buttons, Hyperlinks, and many controls expose text via
+            // Labeled, so this catches the common teaching examples.
             rows.add(row("text", orDash(labeled.getText())));
         }
 

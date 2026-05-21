@@ -56,15 +56,21 @@ public class EditorPane extends VBox {
         getStyleClass().add("editor-pane");
         setId("editorPane");
 
+        // RichTextFX's CodeArea gives us a real code editor surface with line
+        // numbers and per-token styling, while still being a normal JavaFX Node.
         this.codeArea = new CodeArea();
         codeArea.getStyleClass().add("editor-textarea");
         codeArea.setParagraphGraphicFactory(LineNumberFactory.get(codeArea));
 
+        // Keep our lightweight read-only text property in sync with the editor.
+        // InteractiveIde listens to this property and hands changes to SnippetRunner.
         codeArea.textProperty().addListener((obs, old, val) -> {
             text.set(val);
             codeArea.setStyleSpans(0, computeHighlighting(val));
         });
 
+        // VirtualizedScrollPane is the standard RichTextFX wrapper; it keeps
+        // rendering fast for longer snippets by only laying out visible paragraphs.
         VirtualizedScrollPane<CodeArea> scrollPane = new VirtualizedScrollPane<>(codeArea);
         VBox.setVgrow(scrollPane, Priority.ALWAYS);
         getChildren().add(scrollPane);
@@ -81,10 +87,14 @@ public class EditorPane extends VBox {
     public CodeArea getCodeArea() { return codeArea; }
 
     private static StyleSpans<Collection<String>> computeHighlighting(String text) {
+        // The combined regex walks the code once and labels each token with the
+        // CSS class that app.css turns into syntax colors.
         Matcher matcher = PATTERN.matcher(text);
         int lastEnd = 0;
         StyleSpansBuilder<Collection<String>> spans = new StyleSpansBuilder<>();
         while (matcher.find()) {
+            // Anything between two matches is plain source text, so it receives
+            // an empty style list. Matched tokens receive exactly one style.
             String styleClass =
                     matcher.group("KEYWORD") != null ? "keyword" :
                     matcher.group("PAREN") != null ? "paren" :
@@ -97,6 +107,7 @@ public class EditorPane extends VBox {
             spans.add(Collections.singleton(styleClass), matcher.end() - matcher.start());
             lastEnd = matcher.end();
         }
+        // Finish with a trailing plain span after the final regex match.
         spans.add(Collections.emptyList(), text.length() - lastEnd);
         return spans.create();
     }

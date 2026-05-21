@@ -2,6 +2,7 @@ package com.jfxtutor.ui;
 
 import com.jfxtutor.data.curriculum.Lesson;
 import com.jfxtutor.engine.runtime.SnippetRunner;
+import com.jfxtutor.util.AppLog;
 import javafx.application.Platform;
 import javafx.beans.property.ReadOnlyObjectProperty;
 import javafx.beans.property.ReadOnlyObjectWrapper;
@@ -42,19 +43,25 @@ public class InteractiveIde extends VBox {
     private String starterSnippet = "";
 
     public InteractiveIde() {
+        AppLog.info("ide", "Creating editor, preview host, snippet runner, and IDE toolbar.");
         getStyleClass().add("ide");
         setId("interactiveIde");
 
         this.editorPane = new EditorPane();
         this.previewHost = new PreviewHost();
 
+        // SnippetRunner owns the background compile/build work. These callbacks
+        // are where completed work crosses back into the UI: either mount a
+        // successful Parent into the preview, or show the compile/runtime error.
         this.snippetRunner = new SnippetRunner(
                 root -> {
+                    AppLog.info("ide", "Snippet compiled and built successfully; mounting preview root.");
                     previewHost.setSnippetRoot(root);
                     mountedRoot.set(root);
                     setStatus("Ready", "ide-status-ok");
                 },
                 error -> {
+                    AppLog.info("ide", "Snippet failed; showing error overlay: " + oneLine(error));
                     previewHost.showError(error);
                     setStatus("Error", "ide-status-error");
                 });
@@ -128,6 +135,8 @@ public class InteractiveIde extends VBox {
         getChildren().addAll(toolbar, split);
 
         // Live recompile on every keystroke (SnippetRunner debounces internally).
+        // The editor emits text changes immediately; SnippetRunner waits for a
+        // short quiet period so normal typing does not compile every character.
         editorPane.textProperty().addListener((obs, old, val) -> {
             setStatus("Compiling…", "ide-status-busy");
             snippetRunner.scheduleRecompile(val);
@@ -141,6 +150,7 @@ public class InteractiveIde extends VBox {
      */
     public void loadLesson(Lesson lesson) {
         if (lesson == null) return;
+        AppLog.info("ide", "Loading starter snippet for lesson " + lesson.meta.id + ".");
         currentLesson.set(lesson);
         this.starterSnippet = lesson.meta.starterSnippet == null
                 ? "" : lesson.meta.starterSnippet;
@@ -151,12 +161,14 @@ public class InteractiveIde extends VBox {
 
     /** Restore the editor to the lesson's starter snippet. */
     public void resetToStarter() {
+        AppLog.info("ide", "Reset requested; restoring the current lesson starter snippet.");
         editorPane.setText(starterSnippet);
         runNow();
     }
 
     /** Force an immediate compile of the current editor contents. */
     public void runNow() {
+        AppLog.info("ide", "Immediate run requested; compiling the editor contents now.");
         setStatus("Compiling…", "ide-status-busy");
         Runnable fire = () -> snippetRunner.recompileNow(editorPane.getText());
         if (Platform.isFxApplicationThread()) {
@@ -167,6 +179,8 @@ public class InteractiveIde extends VBox {
     }
 
     private void setStatus(String text, String styleClass) {
+        // Status is represented by mutually exclusive CSS classes so the label
+        // text and color stay in sync.
         statusLabel.setText(text);
         statusLabel.getStyleClass().removeAll(
                 "ide-status-idle", "ide-status-busy", "ide-status-ok", "ide-status-error");
@@ -174,6 +188,8 @@ public class InteractiveIde extends VBox {
     }
 
     private void updatePreviewSize(Label sizeLabel) {
+        // This is purely informational UI. It helps learners connect layout
+        // code with the actual preview area available to their snippet.
         double w = previewHost.getWidth();
         double h = previewHost.getHeight();
         if (w <= 0 || h <= 0) {
@@ -196,6 +212,12 @@ public class InteractiveIde extends VBox {
     }
 
     public void shutdown() {
+        AppLog.info("ide", "Shutting down snippet runner executors.");
         snippetRunner.shutdown();
+    }
+
+    private static String oneLine(String text) {
+        if (text == null) return "";
+        return text.replaceAll("\\s+", " ").trim();
     }
 }

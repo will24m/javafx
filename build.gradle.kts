@@ -28,11 +28,22 @@ sourceSets.configureEach {
 
 javafx {
     version = "21.0.5"
-    modules = listOf("javafx.controls", "javafx.fxml")
+    // Snippets teach beyond controls: ImageView uses graphics, WebView uses web,
+    // and MediaPlayer lessons need media available on the runtime module path.
+    modules = listOf("javafx.controls", "javafx.fxml", "javafx.web", "javafx.media")
 }
 
 application {
     mainClass.set("com.jfxtutor.app.JavaFxTutorApp")
+}
+
+// Make ./gradlew run feel less opaque. Gradle prints task names, while the app
+// prints its own boot timeline once JavaFX starts; these lines bridge the gap.
+tasks.named<JavaExec>("run") {
+    doFirst {
+        println("[JavaFX Tutor] Gradle run task is launching ${application.mainClass.get()}.")
+        println("[JavaFX Tutor] Next you should see app startup, curriculum loading, and snippet compile events.")
+    }
 }
 
 dependencies {

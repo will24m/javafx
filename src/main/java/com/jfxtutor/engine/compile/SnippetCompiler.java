@@ -1,5 +1,7 @@
 package com.jfxtutor.engine.compile;
 
+import com.jfxtutor.util.AppLog;
+
 import javax.tools.Diagnostic;
 import javax.tools.DiagnosticCollector;
 import javax.tools.JavaCompiler;
@@ -31,19 +33,29 @@ public class SnippetCompiler {
     private static final String IMPORTS = String.join("\n",
             "import javafx.application.*;",
             "import javafx.beans.*;",
+            "import javafx.beans.binding.*;",
             "import javafx.beans.property.*;",
             "import javafx.beans.value.*;",
             "import javafx.collections.*;",
+            "import javafx.collections.transformation.*;",
+            "import javafx.concurrent.*;",
             "import javafx.event.*;",
+            "import javafx.scene.effect.*;",
             "import javafx.geometry.*;",
             "import javafx.scene.*;",
             "import javafx.scene.control.*;",
+            "import javafx.scene.image.*;",
             "import javafx.scene.input.*;",
             "import javafx.scene.layout.*;",
+            "import javafx.scene.media.*;",
             "import javafx.scene.paint.*;",
             "import javafx.scene.shape.*;",
             "import javafx.scene.text.*;",
+            "import javafx.scene.web.*;",
+            "import javafx.stage.*;",
+            "import javafx.util.*;",
             "import java.util.*;",
+            "import java.util.concurrent.*;",
             "import java.util.function.*;");
 
     private final JavaCompiler compiler;
@@ -61,11 +73,18 @@ public class SnippetCompiler {
         if (userBody == null) {
             userBody = "";
         }
+        AppLog.info("compiler", "Preparing user snippet for in-memory compilation.");
+
+        // Snippets run inside the same JVM as the tutor. Blocking System.exit()
+        // protects the app from a lesson accidentally closing the whole process.
         if (FORBIDDEN_PROCESS_EXIT.matcher(userBody).find()) {
+            AppLog.info("compiler", "Rejected snippet because it tried to exit the JVM.");
             return CompileResult.failureMessage(
                     "Process exit calls are disabled in snippets so the tutor can keep running.");
         }
 
+        // The wrapper supplies package/imports/class/build() shape around the
+        // learner's code so tiny lesson snippets can compile as complete Java.
         WrappedSource wrapped = wrap(userBody);
 
         DiagnosticCollector<JavaFileObject> diagnostics = new DiagnosticCollector<>();
@@ -79,11 +98,16 @@ public class SnippetCompiler {
 
             boolean ok = task.call();
             if (!ok) {
+                AppLog.info("compiler", "Compilation produced "
+                        + diagnostics.getDiagnostics().size() + " diagnostic(s).");
                 return CompileResult.failure(
                         List.copyOf(diagnostics.getDiagnostics()), wrapped.userLineOffset());
             }
+            AppLog.info("compiler", "Compilation succeeded; generated "
+                    + fm.getOutputs().size() + " class file(s) in memory.");
             return CompileResult.success(fm.getOutputs(), ENTRY_FQCN);
         } catch (RuntimeException | IOException e) {
+            AppLog.info("compiler", "Compiler infrastructure failed: " + e.getMessage());
             return CompileResult.failureMessage("Compiler failure: " + e.getMessage());
         }
     }
@@ -100,10 +124,12 @@ public class SnippetCompiler {
 
         String modulePath = System.getProperty("jdk.module.path");
         if (modulePath != null && !modulePath.isBlank()) {
+            // JavaFX lives on the module path when launched by the Gradle JavaFX
+            // plugin, so the embedded compiler needs the same module visibility.
             opts.add("--module-path");
             opts.add(modulePath);
             opts.add("--add-modules");
-            opts.add("javafx.controls,javafx.fxml,javafx.graphics,javafx.base");
+            opts.add("javafx.controls,javafx.fxml,javafx.graphics,javafx.base,javafx.web,javafx.media");
         }
 
         // Also include the runtime classpath so any jars there are visible.
@@ -123,8 +149,11 @@ public class SnippetCompiler {
         sb.append("public class ").append(GENERATED_CLASS).append(" {\n");
         int generatedLinesBeforeUser = countLines(sb);
         if (userBodyHasBuild(userBody)) {
+            // Advanced snippets may provide their own full build() method.
             sb.append(userBody).append("\n");
         } else {
+            // Beginner snippets can be just the method body, for example:
+            // return new StackPane(new Label("Hello"));
             sb.append("public static javafx.scene.Parent build() {\n");
             generatedLinesBeforeUser++;
             sb.append(userBody).append("\n");
@@ -135,6 +164,8 @@ public class SnippetCompiler {
     }
 
     private static boolean userBodyHasBuild(String body) {
+        // This heuristic intentionally stays simple for lesson snippets: if the
+        // learner wrote something that looks like Parent build(...), respect it.
         return body.contains("build(") && body.contains("Parent");
     }
 
