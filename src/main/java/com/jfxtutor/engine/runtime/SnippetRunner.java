@@ -36,6 +36,11 @@ public class SnippetRunner {
         t.setDaemon(true);
         return t;
     });
+    private final ExecutorService buildExecutor = Executors.newSingleThreadExecutor(r -> {
+        Thread t = new Thread(r, "snippet-build");
+        t.setDaemon(true);
+        return t;
+    });
 
     private final Consumer<Parent> onMount;
     private final Consumer<String> onError;
@@ -95,11 +100,6 @@ public class SnippetRunner {
     private BuildResult buildWithTimeout(CompileResult result, long gen) {
         SnippetClassLoader cl = new SnippetClassLoader(
                 result.getClassBytes(), getClass().getClassLoader());
-        ExecutorService buildExecutor = Executors.newSingleThreadExecutor(r -> {
-            Thread t = new Thread(r, "snippet-build-" + gen);
-            t.setDaemon(true);
-            return t;
-        });
         Future<Object> future = buildExecutor.submit(() -> {
             Class<?> klass = cl.loadClass(result.getEntryClassName());
             Method build = klass.getMethod("build");
@@ -127,8 +127,6 @@ public class SnippetRunner {
         } catch (ExecutionException e) {
             cl.close();
             return BuildResult.error("Runtime error in build(): " + describe(unwrap(e)));
-        } finally {
-            buildExecutor.shutdownNow();
         }
     }
 

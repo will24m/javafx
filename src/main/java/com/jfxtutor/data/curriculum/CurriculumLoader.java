@@ -18,7 +18,9 @@ public class CurriculumLoader {
 
     /**
      * Loads all lessons listed in /curriculum/index.txt from the classpath.
-     * Returns them sorted by (tier, order).
+     * Returns them sorted by global {@code order} (which is also unique
+     * within each tier), so the navigator opens to lesson 001 regardless of
+     * how tier names sort alphabetically.
      */
     public static List<Lesson> loadAll() {
         List<String> paths = readIndex();
@@ -35,10 +37,7 @@ public class CurriculumLoader {
             throw new IllegalStateException("Failed to load curriculum:\n"
                     + String.join("\n", failures));
         }
-        lessons.sort((a, b) -> {
-            int tierCmp = a.meta.tier.compareTo(b.meta.tier);
-            return tierCmp != 0 ? tierCmp : Integer.compare(a.meta.order, b.meta.order);
-        });
+        lessons.sort((a, b) -> Integer.compare(a.meta.order, b.meta.order));
         return lessons;
     }
 

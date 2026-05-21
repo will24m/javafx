@@ -31,14 +31,6 @@ javafx {
     modules = listOf("javafx.controls", "javafx.fxml")
 }
 
-val compilerAccessJvmArgs = listOf(
-    "--add-modules=jdk.compiler",
-    "--add-opens=jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED",
-    "--add-opens=jdk.compiler/com.sun.tools.javac.file=ALL-UNNAMED",
-    "--add-exports=jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED",
-    "--add-exports=jdk.compiler/com.sun.tools.javac.file=ALL-UNNAMED"
-)
-
 application {
     mainClass.set("com.jfxtutor.app.JavaFxTutorApp")
 }
@@ -59,11 +51,14 @@ dependencies {
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
-tasks.withType<JavaExec>().configureEach {
-    jvmArgs(compilerAccessJvmArgs)
-}
-
 tasks.withType<Test>().configureEach {
     useJUnitPlatform()
-    jvmArgs(compilerAccessJvmArgs)
+}
+
+// Convenience: copy resolved runtime jars into build/dependencies so the VSCode
+// Java extension can pick them up via java.project.referencedLibraries when it
+// hasn't fully imported the Gradle model yet.
+tasks.register<Copy>("copyDependencies") {
+    from(configurations.runtimeClasspath)
+    into(layout.buildDirectory.dir("dependencies"))
 }

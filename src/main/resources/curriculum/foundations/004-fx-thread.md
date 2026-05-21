@@ -24,7 +24,7 @@ challenges:
   - id: c1
     description: "Wrap the status.setText() call in Platform.runLater() so it runs on the FX thread"
     assertion: containsNodeOfType(Label)
-nextLesson: 005-platform-run-later
+nextLesson: 005-labels-and-buttons
 ---
 
 # The JavaFX Application Thread

@@ -1,178 +1,433 @@
-/* JavaFX Tutor — host theme (dark). Scoped via .host-root selectors so it
-   does not leak into the sandbox subtree (.sandbox-root). */
+/* =============================================================
+   JavaFX Tutor — host theme
+   Scoped via .host-root so styles do NOT cascade into the
+   sandbox subtree (.sandbox-root) where user snippets render.
+   ============================================================= */
 
+/* -------- Color tokens (kept as CSS variables via lookup colors) -- */
 .host-root {
-    -fx-base: #1e1f22;
-    -fx-background: #2b2d30;
-    -fx-control-inner-background: #2b2d30;
-    -fx-accent: #4a8cff;
-    -fx-font-family: "Inter", "Helvetica Neue", "Segoe UI", sans-serif;
+    -fx-bg-0:        #0f1014;   /* deepest — chrome edges */
+    -fx-bg-1:        #15171b;   /* panels */
+    -fx-bg-2:        #1c1f24;   /* surfaces */
+    -fx-bg-3:        #232730;   /* hovered surfaces */
+    -fx-bg-4:        #2d323c;   /* selected, raised */
+    -fx-border-soft: #2a2d33;
+    -fx-border-hard: #383c45;
+    -fx-text-0:      #f0f1f4;   /* primary text */
+    -fx-text-1:      #c8c9cd;   /* body text */
+    -fx-text-2:      #8a8e96;   /* muted */
+    -fx-text-3:      #5d6066;   /* hints, line numbers */
+    -fx-accent-1:    #6ea8ff;   /* primary accent (links, focus) */
+    -fx-accent-2:    #4a8cff;   /* selected */
+    -fx-accent-3:    #2d4a8a;   /* selection bg */
+    -fx-success:     #6dbe6d;
+    -fx-warning:     #d6a55c;
+    -fx-error:       #e26060;
+
+    -fx-base: -fx-bg-1;
+    -fx-background: -fx-bg-1;
+    -fx-control-inner-background: -fx-bg-2;
+    -fx-accent: -fx-accent-2;
+    -fx-focus-color: -fx-accent-1;
+    -fx-faint-focus-color: transparent;
+    -fx-font-family: "Inter", "SF Pro Text", "Helvetica Neue", "Segoe UI", sans-serif;
     -fx-font-size: 13px;
+    -fx-text-fill: -fx-text-1;
 }
 
-.host-root .nav-header {
-    -fx-font-size: 14px;
+/* -------- App header ----------------------------------------- */
+.host-root .app-header {
+    -fx-background-color: linear-gradient(to bottom, #1f232a, #16181d);
+    -fx-border-color: #000000 transparent -fx-border-hard transparent;
+    -fx-border-width: 0 0 1 0;
+}
+.host-root .app-brand {
+    -fx-text-fill: -fx-text-0;
+    -fx-font-size: 13px;
     -fx-font-weight: bold;
-    -fx-text-fill: #c8c9cc;
-    -fx-padding: 10 12 6 12;
 }
-
-.host-root .lesson-navigator {
-    -fx-background-color: #1e1f22;
-}
-
-.host-root .lesson-pane {
-    -fx-background-color: #232427;
-}
-
-.host-root .lesson-content {
-    -fx-padding: 16;
-}
-
-.host-root .lesson-title {
-    -fx-font-size: 20px;
-    -fx-font-weight: bold;
-    -fx-text-fill: #f0f1f3;
-}
-
-.host-root .lesson-body {
-    -fx-fill: #c8c9cc;
+.host-root .app-header-sep {
+    -fx-text-fill: -fx-text-3;
     -fx-font-size: 13px;
 }
-
-.host-root .editor-pane {
-    -fx-background-color: #1b1c1e;
+.host-root .app-crumbs {
+    -fx-text-fill: -fx-text-1;
+    -fx-font-size: 12px;
+}
+.host-root .app-tagline {
+    -fx-text-fill: -fx-text-3;
+    -fx-font-size: 11px;
+    -fx-font-style: italic;
 }
 
-.host-root .editor-textarea {
-    -fx-font-family: "JetBrains Mono", "Menlo", "Consolas", monospace;
-    -fx-font-size: 13px;
-    -fx-background-color: #1b1c1e;
-}
-
-.host-root .editor-textarea .content {
-    -fx-background-color: #1b1c1e;
-}
-
-/* RichTextFX CodeArea text styling */
-.host-root .editor-textarea .text {
-    -fx-fill: #c8c9cc;
-}
-
-.host-root .editor-textarea .caret {
-    -fx-stroke: #f0f1f3;
-}
-
-.host-root .editor-textarea .selection {
-    -fx-fill: #2d4a8a;
-}
-
-.host-root .editor-textarea .lineno {
-    -fx-background-color: #1b1c1e;
-    -fx-text-fill: #6a6f76;
-}
-
-.host-root .editor-textarea .keyword   { -fx-fill: #cc7832; -fx-font-weight: bold; }
-.host-root .editor-textarea .string    { -fx-fill: #6a8759; }
-.host-root .editor-textarea .comment   { -fx-fill: #808080; -fx-font-style: italic; }
-.host-root .editor-textarea .paren,
-.host-root .editor-textarea .brace,
-.host-root .editor-textarea .bracket   { -fx-fill: #a9b7c6; }
-.host-root .editor-textarea .semicolon { -fx-fill: #a9b7c6; }
-
-.host-root .preview-host {
-    -fx-background-color: #ffffff;
-    -fx-border-color: #3a3c40;
+/* -------- Status bar ----------------------------------------- */
+.host-root .app-status-bar {
+    -fx-background-color: linear-gradient(to bottom, #16181d, #0f1115);
+    -fx-border-color: -fx-border-hard transparent transparent transparent;
     -fx-border-width: 1 0 0 0;
 }
+.host-root .status-text {
+    -fx-text-fill: -fx-text-2;
+    -fx-font-size: 11px;
+}
 
-.host-root .preview-sandbox {
+/* -------- Lesson navigator (left rail) ----------------------- */
+.host-root .lesson-navigator {
+    -fx-background-color: -fx-bg-1;
+    -fx-border-color: transparent -fx-border-hard transparent transparent;
+    -fx-border-width: 0 1 0 0;
+}
+.host-root .nav-header {
+    -fx-font-size: 11px;
+    -fx-font-weight: bold;
+    -fx-text-fill: -fx-text-2;
+    -fx-padding: 12 12 8 12;
+}
+.host-root .nav-search {
+    -fx-background-color: -fx-bg-2;
+    -fx-text-fill: -fx-text-1;
+    -fx-prompt-text-fill: -fx-text-3;
+    -fx-background-radius: 4;
+    -fx-border-color: -fx-border-soft;
+    -fx-border-radius: 4;
+    -fx-padding: 4 8 4 8;
+    -fx-font-size: 12px;
+}
+.host-root .nav-search:focused {
+    -fx-border-color: -fx-accent-1;
+    -fx-effect: dropshadow(gaussian, rgba(110, 168, 255, 0.25), 4, 0, 0, 0);
+}
+.host-root .lesson-tree {
     -fx-background-color: transparent;
+    -fx-padding: 0;
+}
+.host-root .lesson-tree > .virtual-flow > .clipped-container > .sheet > .tree-cell {
+    -fx-background-color: transparent;
+    -fx-text-fill: -fx-text-1;
+    -fx-padding: 4 12 4 4;
+    -fx-font-size: 12px;
+}
+.host-root .lesson-tree .tier-cell {
+    -fx-text-fill: -fx-text-3;
+    -fx-font-size: 10px;
+    -fx-font-weight: bold;
+    -fx-padding: 10 12 4 4;
+}
+.host-root .lesson-tree .lesson-cell:hover {
+    -fx-background-color: -fx-bg-3;
+}
+.host-root .lesson-tree .lesson-cell:selected,
+.host-root .lesson-tree .tree-cell:filled:selected {
+    -fx-background-color: -fx-accent-3;
+    -fx-text-fill: #ffffff;
+}
+.host-root .lesson-tree .tree-cell > .tree-disclosure-node > .arrow {
+    -fx-background-color: -fx-text-3;
+}
+.host-root .lesson-tree .tree-cell:expanded > .tree-disclosure-node > .arrow {
+    -fx-background-color: -fx-text-1;
 }
 
-.host-root .preview-error-overlay {
-    -fx-background-color: rgba(120, 30, 30, 0.92);
-    -fx-padding: 8 12 8 12;
-    -fx-max-height: 160;
+/* -------- Lesson pane (markdown content) --------------------- */
+.host-root .lesson-pane {
+    -fx-background-color: -fx-bg-1;
+    -fx-border-color: transparent -fx-border-hard transparent transparent;
+    -fx-border-width: 0 1 0 0;
+}
+.host-root .lesson-content {
+    -fx-padding: 20 24 24 24;
+    -fx-spacing: 12;
+}
+.host-root .lesson-scroll,
+.host-root .lesson-scroll > .viewport {
+    -fx-background-color: -fx-bg-1;
+}
+.host-root .lesson-title {
+    -fx-font-size: 22px;
+    -fx-font-weight: bold;
+    -fx-text-fill: -fx-text-0;
+}
+.host-root .lesson-body {
+    -fx-fill: -fx-text-1;
+    -fx-font-size: 13px;
 }
 
-.host-root .preview-error-label {
-    -fx-text-fill: #ffe4e4;
-    -fx-font-family: "Menlo", "Consolas", monospace;
+/* Markdown blocks */
+.host-root .md-paragraph,
+.host-root .md-list-item {
+    -fx-padding: 0;
+    -fx-line-spacing: 4;
+}
+.host-root .md-heading {
+    -fx-padding: 8 0 4 0;
+    -fx-line-spacing: 3;
+}
+.host-root .md-text {
+    -fx-fill: -fx-text-1;
+}
+.host-root .md-inline-code {
+    -fx-fill: -fx-accent-1;
+    -fx-background-color: -fx-bg-3;
+    -fx-font-family: "JetBrains Mono", "Menlo", "Consolas", monospace;
+    -fx-font-size: 12px;
+}
+.host-root .md-link {
+    -fx-fill: -fx-accent-1;
+}
+.host-root .md-block-quote {
+    -fx-padding: 8 0 8 12;
+    -fx-border-color: transparent transparent transparent -fx-accent-2;
+    -fx-border-width: 0 0 0 3;
+    -fx-background-color: -fx-bg-2;
+}
+.host-root .md-code-flow {
+    -fx-background-color: -fx-bg-0;
+    -fx-padding: 12 16 12 16;
+    -fx-border-color: -fx-border-soft;
+    -fx-border-width: 1;
+    -fx-border-radius: 4;
+    -fx-background-radius: 4;
+}
+.host-root .md-code-block {
+    -fx-fill: #a9b7c6;
+    -fx-font-family: "JetBrains Mono", "Menlo", "Consolas", monospace;
     -fx-font-size: 12px;
 }
 
-.host-root .inspector-pane {
-    -fx-background-color: #1e1f22;
+/* -------- Interactive IDE ------------------------------------ */
+.host-root .ide {
+    -fx-background-color: -fx-bg-0;
+    -fx-border-color: transparent -fx-border-hard transparent -fx-border-hard;
+    -fx-border-width: 0 1 0 1;
 }
-
-.host-root .inspector-placeholder {
-    -fx-padding: 0 12 12 12;
-    -fx-text-fill: #9aa0a6;
+.host-root .ide-toolbar {
+    -fx-background-color: linear-gradient(to bottom, #1f232a, #16181d);
+    -fx-border-color: transparent transparent -fx-border-hard transparent;
+    -fx-border-width: 0 0 1 0;
 }
-
-/* Markdown content styles (scoped under .host-root via .lesson-pane) */
-.host-root .lesson-title-flow {
-    -fx-padding: 0 16 8 16;
+.host-root .ide-toolbar > .label {
+    -fx-text-fill: -fx-text-2;
+    -fx-font-size: 10px;
+    -fx-font-weight: bold;
 }
-
-.host-root .md-paragraph,
-.host-root .md-heading,
-.host-root .md-list-item {
-    -fx-padding: 0 16 0 16;
-    -fx-line-spacing: 3;
+.host-root .ide-lesson-chip {
+    -fx-background-color: -fx-accent-3;
+    -fx-text-fill: #ffffff !important;
+    -fx-font-weight: normal !important;
+    -fx-font-size: 11px !important;
+    -fx-padding: 3 10 3 10;
+    -fx-background-radius: 10;
 }
-
-.host-root .md-text {
-    -fx-fill: #c8c9cc;
-}
-
-.host-root .md-inline-code {
-    -fx-fill: #6ab0de;
-    -fx-background-color: #2d3038;
-}
-
-.host-root .md-link {
-    -fx-fill: #7fb4ff;
-}
-
-.host-root .md-block-quote {
-    -fx-padding: 8 12 8 12;
-    -fx-border-color: #4b5563;
-    -fx-border-width: 0 0 0 3;
-}
-
-.host-root .md-code-flow {
-    -fx-background-color: #1b1c1e;
-    -fx-padding: 10 16 10 16;
-    -fx-border-color: #3a3c40;
+.host-root .ide-button {
+    -fx-background-color: -fx-bg-3;
+    -fx-text-fill: -fx-text-1 !important;
+    -fx-font-weight: normal !important;
+    -fx-font-size: 11px !important;
+    -fx-border-color: -fx-border-hard;
     -fx-border-width: 1;
+    -fx-background-radius: 4;
+    -fx-border-radius: 4;
+    -fx-padding: 3 12 3 12;
+    -fx-cursor: hand;
+}
+.host-root .ide-button:hover {
+    -fx-background-color: -fx-bg-4;
+    -fx-border-color: -fx-accent-1;
+}
+.host-root .ide-button:armed {
+    -fx-background-color: -fx-accent-3;
+}
+.host-root .ide-status {
+    -fx-padding: 2 10 2 10;
+    -fx-background-radius: 10;
+    -fx-font-size: 10px !important;
+    -fx-font-weight: bold !important;
+}
+.host-root .ide-status-idle  { -fx-background-color: -fx-bg-3; -fx-text-fill: -fx-text-2 !important; }
+.host-root .ide-status-busy  { -fx-background-color: derive(-fx-warning, -45%); -fx-text-fill: -fx-warning !important; }
+.host-root .ide-status-ok    { -fx-background-color: derive(-fx-success, -55%); -fx-text-fill: -fx-success !important; }
+.host-root .ide-status-error { -fx-background-color: derive(-fx-error, -50%);   -fx-text-fill: -fx-error !important; }
+
+.host-root .ide-pane-header {
+    -fx-background-color: -fx-bg-1;
+    -fx-text-fill: -fx-text-3;
+    -fx-font-family: "JetBrains Mono", "Menlo", "Consolas", monospace;
+    -fx-font-size: 10px;
+    -fx-padding: 4 12 4 12;
+    -fx-border-color: transparent transparent -fx-border-soft transparent;
+    -fx-border-width: 0 0 1 0;
+    -fx-max-width: infinity;
+}
+.host-root .ide-editor-box,
+.host-root .ide-preview-box {
+    -fx-background-color: -fx-bg-0;
+}
+.host-root .ide-split > .split-pane-divider {
+    -fx-background-color: -fx-border-hard;
+    -fx-padding: 0 0 0 0;
 }
 
-.host-root .md-code-block {
-    -fx-fill: #a9b7c6;
+/* -------- Editor (RichTextFX CodeArea) ----------------------- */
+.host-root .editor-pane {
+    -fx-background-color: -fx-bg-0;
 }
-
-/* Lesson tree */
-.host-root .lesson-tree {
-    -fx-background-color: #1e1f22;
+.host-root .editor-textarea {
+    -fx-font-family: "JetBrains Mono", "Menlo", "Monaco", "Consolas", monospace;
+    -fx-font-size: 13px;
+    -fx-background-color: -fx-bg-0;
 }
+.host-root .editor-textarea .content {
+    -fx-background-color: -fx-bg-0;
+    -fx-padding: 8 12 8 8;
+}
+.host-root .editor-textarea .text {
+    -fx-fill: -fx-text-1;
+}
+.host-root .editor-textarea .caret {
+    -fx-stroke: -fx-text-0;
+    -fx-stroke-width: 1.5;
+}
+.host-root .editor-textarea .selection {
+    -fx-fill: -fx-accent-3;
+}
+.host-root .editor-textarea .lineno {
+    -fx-background-color: -fx-bg-1;
+    -fx-text-fill: -fx-text-3;
+    -fx-padding: 0 8 0 8;
+    -fx-font-size: 11px;
+}
+.host-root .editor-textarea .keyword   { -fx-fill: #cf8e6d; -fx-font-weight: bold; }
+.host-root .editor-textarea .string    { -fx-fill: #6aab73; }
+.host-root .editor-textarea .comment   { -fx-fill: #6a6f76; -fx-font-style: italic; }
+.host-root .editor-textarea .paren,
+.host-root .editor-textarea .brace,
+.host-root .editor-textarea .bracket   { -fx-fill: #c8c9cd; }
+.host-root .editor-textarea .semicolon { -fx-fill: -fx-text-2; }
 
-.host-root .lesson-tree .tree-cell {
+/* -------- Preview host --------------------------------------- */
+.host-root .preview-host {
+    -fx-background-color: #ffffff;
+    -fx-border-color: -fx-border-hard transparent transparent transparent;
+    -fx-border-width: 1 0 0 0;
+}
+.host-root .preview-sandbox {
     -fx-background-color: transparent;
-    -fx-text-fill: #c8c9cc;
-    -fx-padding: 3 8 3 4;
+}
+.host-root .preview-error-overlay {
+    -fx-background-color: rgba(141, 41, 41, 0.94);
+    -fx-padding: 10 14 10 14;
+    -fx-max-height: 200;
+    -fx-border-color: -fx-error transparent transparent transparent;
+    -fx-border-width: 2 0 0 0;
+}
+.host-root .preview-error-label {
+    -fx-text-fill: #ffeaea;
+    -fx-font-family: "JetBrains Mono", "Menlo", "Consolas", monospace;
+    -fx-font-size: 11px;
 }
 
-.host-root .lesson-tree .tree-cell:selected {
-    -fx-background-color: #2d4a8a;
+/* -------- Inspector ------------------------------------------ */
+.host-root .inspector-pane {
+    -fx-background-color: -fx-bg-1;
+    -fx-border-color: transparent transparent transparent -fx-border-hard;
+    -fx-border-width: 0 0 0 1;
+}
+.host-root .inspector-summary {
+    -fx-text-fill: -fx-text-3;
+    -fx-font-size: 11px;
+    -fx-padding: 0 12 8 12;
+}
+.host-root .inspector-tree,
+.host-root .inspector-tree > .virtual-flow > .clipped-container > .sheet > .tree-cell {
+    -fx-background-color: transparent;
+    -fx-text-fill: -fx-text-1;
+    -fx-font-family: "JetBrains Mono", "Menlo", "Consolas", monospace;
+    -fx-font-size: 11px;
+    -fx-padding: 2 8 2 4;
+}
+.host-root .inspector-tree .tree-cell:hover {
+    -fx-background-color: -fx-bg-3;
+}
+.host-root .inspector-tree .tree-cell:filled:selected {
+    -fx-background-color: -fx-accent-3;
     -fx-text-fill: #ffffff;
 }
+.host-root .inspector-tree .tree-cell > .tree-disclosure-node > .arrow {
+    -fx-background-color: -fx-text-3;
+}
+.host-root .inspector-table {
+    -fx-background-color: -fx-bg-2;
+    -fx-table-cell-border-color: -fx-border-soft;
+    -fx-font-size: 11px;
+}
+.host-root .inspector-table .column-header-background {
+    -fx-background-color: -fx-bg-1;
+}
+.host-root .inspector-table .column-header,
+.host-root .inspector-table .filler {
+    -fx-background-color: -fx-bg-1;
+    -fx-border-color: transparent transparent -fx-border-hard transparent;
+    -fx-border-width: 0 0 1 0;
+}
+.host-root .inspector-table .column-header .label {
+    -fx-text-fill: -fx-text-2;
+    -fx-font-size: 10px;
+    -fx-font-weight: bold;
+    -fx-alignment: CENTER_LEFT;
+}
+.host-root .inspector-table .table-row-cell {
+    -fx-background-color: -fx-bg-2;
+    -fx-border-color: transparent;
+    -fx-table-cell-border-color: transparent;
+}
+.host-root .inspector-table .table-row-cell:odd {
+    -fx-background-color: -fx-bg-1;
+}
+.host-root .inspector-table .table-cell {
+    -fx-text-fill: -fx-text-1;
+    -fx-font-family: "JetBrains Mono", "Menlo", "Consolas", monospace;
+    -fx-padding: 4 8 4 8;
+    -fx-border-color: transparent;
+}
 
-/* Sandbox subtree — neutral baseline so the user's snippet looks like a
-   default JavaFX app. User CSS via Parent.getStylesheets() applies here. */
+/* -------- SplitPane dividers (host-wide) --------------------- */
+.host-root > .split-pane > .split-pane-divider {
+    -fx-background-color: -fx-border-hard;
+    -fx-padding: 0 0.5 0 0.5;
+}
+
+/* -------- Scrollbars ----------------------------------------- */
+.host-root .scroll-bar {
+    -fx-background-color: -fx-bg-1;
+}
+.host-root .scroll-bar .thumb {
+    -fx-background-color: -fx-bg-3;
+    -fx-background-radius: 4;
+}
+.host-root .scroll-bar .thumb:hover { -fx-background-color: -fx-bg-4; }
+.host-root .scroll-bar .increment-button,
+.host-root .scroll-bar .decrement-button,
+.host-root .scroll-bar .increment-arrow,
+.host-root .scroll-bar .decrement-arrow {
+    -fx-background-color: transparent;
+    -fx-padding: 0;
+    -fx-shape: null;
+}
+
+/* =============================================================
+   Sandbox subtree — neutral baseline so the user's snippet
+   looks like a default JavaFX app. The host dark theme above
+   must NOT bleed in via descendant cascades.
+   ============================================================= */
 .sandbox-root {
     -fx-base: #ececec;
-    -fx-font-family: "Helvetica Neue", "Segoe UI", sans-serif;
+    -fx-background: #ffffff;
+    -fx-control-inner-background: #ffffff;
+    -fx-text-base-color: #1e1f22;
+    -fx-text-background-color: #1e1f22;
+    -fx-text-inner-color: #1e1f22;
+    -fx-font-family: "Helvetica Neue", "SF Pro Text", "Segoe UI", sans-serif;
     -fx-font-size: 13px;
 }
+.sandbox-root .label { -fx-text-fill: #1e1f22; }
+.sandbox-root .text  { -fx-fill: #1e1f22; }

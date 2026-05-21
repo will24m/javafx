@@ -22,8 +22,15 @@ public final class SnippetSession implements AutoCloseable {
 
     @Override
     public void close() {
-        if (root != null && root.getParent() instanceof javafx.scene.layout.Pane parent) {
-            parent.getChildren().remove(root);
+        if (root != null) {
+            javafx.scene.Parent parent = root.getParent();
+            if (parent instanceof javafx.scene.layout.Pane pane) {
+                pane.getChildren().remove(root);
+            } else if (parent instanceof javafx.scene.Group group) {
+                group.getChildren().remove(root);
+            }
+            // Other Parent subclasses (Control, etc.) own their children
+            // internally — releasing our reference is enough for GC.
         }
         root = null;
         try {
