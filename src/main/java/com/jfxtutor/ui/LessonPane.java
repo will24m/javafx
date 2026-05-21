@@ -96,6 +96,7 @@ public class LessonPane extends VBox {
         if (node instanceof Heading h) {
             TextFlow flow = new TextFlow();
             flow.getStyleClass().add("md-heading");
+            flow.setMaxWidth(Double.MAX_VALUE);
             double size = switch (h.getLevel()) { case 1 -> 18.0; case 2 -> 16.0; default -> 14.0; };
             collectInline(h.getFirstChild(), flow, size, FontWeight.BOLD, FontPosture.REGULAR);
             return flow;
@@ -155,6 +156,7 @@ public class LessonPane extends VBox {
     private TextFlow inlineFlow(Node firstInline, String styleClass) {
         TextFlow flow = new TextFlow();
         flow.getStyleClass().add(styleClass);
+        flow.setMaxWidth(Double.MAX_VALUE);
         collectInline(firstInline, flow, 13, FontWeight.NORMAL, FontPosture.REGULAR);
         return flow;
     }

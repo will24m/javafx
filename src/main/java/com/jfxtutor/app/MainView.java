@@ -61,7 +61,12 @@ public class MainView extends BorderPane {
         SplitPane workspace = new SplitPane();
         workspace.setOrientation(Orientation.HORIZONTAL);
         workspace.getItems().addAll(lessonNavigator, lessonPane, ide, inspectorPane);
-        workspace.setDividerPositions(0.16, 0.38, 0.78);
+        // Slightly wider navigator + inspector so titles & properties don't truncate.
+        workspace.setDividerPositions(0.19, 0.40, 0.76);
+        lessonNavigator.setMinWidth(180);
+        lessonPane.setMinWidth(260);
+        ide.setMinWidth(320);
+        inspectorPane.setMinWidth(220);
         setCenter(workspace);
 
         // ---- Bottom: status bar ----

@@ -1,7 +1,10 @@
 package com.jfxtutor.ui;
 
+import javafx.application.Platform;
+import javafx.beans.InvalidationListener;
 import javafx.beans.property.ReadOnlyObjectWrapper;
 import javafx.beans.value.ChangeListener;
+import javafx.geometry.Bounds;
 import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.control.Label;
@@ -13,6 +16,7 @@ import javafx.scene.control.TreeItem;
 import javafx.scene.control.TreeView;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.Priority;
+import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 
 import java.util.ArrayList;
@@ -21,25 +25,31 @@ import java.util.Locale;
 
 /**
  * Live scene-graph inspector. Pointed at a {@link Parent} (typically the snippet
- * preview root), it builds a TreeView of every descendant node and displays a
- * properties table for whichever node is selected. The tree refreshes whenever
- * a new root is set; selection-driven property updates re-poll on demand.
+ * preview root), it builds a TreeView of every descendant Node and shows a
+ * property table for whichever node is selected. The properties table re-polls
+ * on every layout pulse for the selected node so sizes / bounds reflect the
+ * actual rendered state instead of pre-layout zeros.
  */
 public class InspectorPane extends VBox {
 
     private final TreeView<Node> tree;
     private final TableView<PropertyRow> table;
-    private final Label header;
     private final Label summary;
+
     private Parent currentRoot;
-    private ChangeListener<Number> sizeListener;
-    private Node listenedNode;
+
+    /** Listens to layout invalidations on the SELECTED node so we re-poll bounds. */
+    private final InvalidationListener selectedBoundsListener = obs -> refreshTable();
+    private Node observedNode;
+
+    /** Listens to width/height of the root for the summary line. */
+    private final ChangeListener<Number> rootSizeListener = (o, a, b) -> updateSummary(currentRoot);
 
     public InspectorPane() {
         getStyleClass().add("inspector-pane");
         setId("inspectorPane");
 
-        this.header = new Label("Inspector");
+        Label header = new Label("Inspector");
         header.getStyleClass().add("nav-header");
 
         this.summary = new Label("No preview mounted yet.");
@@ -55,10 +65,8 @@ public class InspectorPane extends VBox {
                 super.updateItem(node, empty);
                 if (empty || node == null) {
                     setText(null);
-                    setStyle("");
                 } else {
                     setText(describe(node));
-                    setStyle("");
                 }
             }
         });
@@ -67,72 +75,101 @@ public class InspectorPane extends VBox {
         this.table = new TableView<>();
         table.getStyleClass().add("inspector-table");
         table.setPlaceholder(new Label("Select a node to inspect."));
+        // Constrained resize so the two columns share the table width 35/65.
+        table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
 
         TableColumn<PropertyRow, String> nameCol = new TableColumn<>("Property");
         nameCol.setCellValueFactory(new PropertyValueFactory<>("name"));
-        nameCol.setPrefWidth(110);
+        nameCol.setMaxWidth(Double.MAX_VALUE);
+        nameCol.setMinWidth(70);
+
         TableColumn<PropertyRow, String> valueCol = new TableColumn<>("Value");
         valueCol.setCellValueFactory(new PropertyValueFactory<>("value"));
-        valueCol.setPrefWidth(180);
+        valueCol.setMaxWidth(Double.MAX_VALUE);
+        valueCol.setMinWidth(120);
+
         table.getColumns().add(nameCol);
         table.getColumns().add(valueCol);
+
+        // Initial weights: ~35% property, 65% value, redistributed by the constrained policy.
+        nameCol.setPrefWidth(85);
+        valueCol.setPrefWidth(165);
+
         VBox.setVgrow(table, Priority.ALWAYS);
 
         SplitPane split = new SplitPane(tree, table);
         split.setOrientation(javafx.geometry.Orientation.VERTICAL);
-        split.setDividerPositions(0.55);
+        split.setDividerPositions(0.62);   // tree gets more space than props
         VBox.setVgrow(split, Priority.ALWAYS);
 
         getChildren().addAll(header, summary, split);
 
-        tree.getSelectionModel().selectedItemProperty().addListener(
-                (obs, old, sel) -> populateTable(sel == null ? null : sel.getValue()));
+        tree.getSelectionModel().selectedItemProperty().addListener((obs, old, sel) -> {
+            observeNode(sel == null ? null : sel.getValue());
+            refreshTable();
+        });
     }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Root + selection lifecycle
+    // ─────────────────────────────────────────────────────────────────────────
 
     /** Re-root the inspector. Call after each snippet mount. */
     public void setRoot(Parent root) {
-        detachSizeListener();
+        detachRootSizeListener();
+        observeNode(null);
         this.currentRoot = root;
+
         if (root == null) {
             tree.setRoot(null);
             summary.setText("No preview mounted.");
             table.getItems().clear();
             return;
         }
+
         TreeItem<Node> treeRoot = buildTree(root);
-        treeRoot.setExpanded(true);
+        expandAll(treeRoot);
         tree.setRoot(treeRoot);
         tree.getSelectionModel().select(treeRoot);
-        attachSizeListener(root);
-        updateSummary(root);
+
+        attachRootSizeListener(root);
+        // Defer one pulse so layout has run before we read sizes.
+        Platform.runLater(() -> updateSummary(root));
     }
 
-    private void attachSizeListener(Parent root) {
-        listenedNode = root;
-        sizeListener = (obs, old, val) -> updateSummary(listenedNode);
-        if (root instanceof javafx.scene.layout.Region region) {
-            region.widthProperty().addListener(sizeListener);
-            region.heightProperty().addListener(sizeListener);
+    private void observeNode(Node node) {
+        if (observedNode != null) {
+            observedNode.boundsInParentProperty().removeListener(selectedBoundsListener);
+            observedNode.boundsInLocalProperty().removeListener(selectedBoundsListener);
+            observedNode.layoutXProperty().removeListener(selectedBoundsListener);
+            observedNode.layoutYProperty().removeListener(selectedBoundsListener);
+        }
+        observedNode = node;
+        if (node != null) {
+            node.boundsInParentProperty().addListener(selectedBoundsListener);
+            node.boundsInLocalProperty().addListener(selectedBoundsListener);
+            node.layoutXProperty().addListener(selectedBoundsListener);
+            node.layoutYProperty().addListener(selectedBoundsListener);
         }
     }
 
-    private void detachSizeListener() {
-        if (listenedNode instanceof javafx.scene.layout.Region region && sizeListener != null) {
-            region.widthProperty().removeListener(sizeListener);
-            region.heightProperty().removeListener(sizeListener);
+    private void attachRootSizeListener(Parent root) {
+        if (root instanceof Region r) {
+            r.widthProperty().addListener(rootSizeListener);
+            r.heightProperty().addListener(rootSizeListener);
         }
-        sizeListener = null;
-        listenedNode = null;
     }
 
-    private void updateSummary(Node root) {
-        if (root == null) return;
-        int count = countDescendants(root);
-        String size = root instanceof javafx.scene.layout.Region r
-                ? String.format(Locale.ROOT, "%.0f × %.0f", r.getWidth(), r.getHeight())
-                : "—";
-        summary.setText(count + " nodes  ·  root size " + size);
+    private void detachRootSizeListener() {
+        if (currentRoot instanceof Region r) {
+            r.widthProperty().removeListener(rootSizeListener);
+            r.heightProperty().removeListener(rootSizeListener);
+        }
     }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Tree construction
+    // ─────────────────────────────────────────────────────────────────────────
 
     private TreeItem<Node> buildTree(Node node) {
         TreeItem<Node> item = new TreeItem<>(node);
@@ -142,6 +179,11 @@ public class InspectorPane extends VBox {
             }
         }
         return item;
+    }
+
+    private void expandAll(TreeItem<?> item) {
+        item.setExpanded(true);
+        for (TreeItem<?> c : item.getChildren()) expandAll(c);
     }
 
     private int countDescendants(Node node) {
@@ -154,60 +196,103 @@ public class InspectorPane extends VBox {
         return n;
     }
 
-    private void populateTable(Node node) {
+    // ─────────────────────────────────────────────────────────────────────────
+    // Summary + table refresh
+    // ─────────────────────────────────────────────────────────────────────────
+
+    private void updateSummary(Node root) {
+        if (root == null) {
+            summary.setText("No preview mounted.");
+            return;
+        }
+        int count = countDescendants(root);
+        String size = root instanceof Region r
+                ? String.format(Locale.ROOT, "%.0f × %.0f", r.getWidth(), r.getHeight())
+                : "—";
+        summary.setText(count + " nodes  ·  root size " + size);
+    }
+
+    private void refreshTable() {
+        Node node = observedNode;
         List<PropertyRow> rows = new ArrayList<>();
         if (node == null) {
             table.getItems().setAll(rows);
             return;
         }
-        rows.add(row("type",      node.getClass().getSimpleName()));
-        rows.add(row("id",        node.getId() == null ? "—" : node.getId()));
+
+        rows.add(row("type",       node.getClass().getSimpleName()));
+        rows.add(row("id",         orDash(node.getId())));
         rows.add(row("styleClass", node.getStyleClass().isEmpty()
                 ? "—" : String.join(" ", node.getStyleClass())));
-        rows.add(row("layoutX",   formatDouble(node.getLayoutX())));
-        rows.add(row("layoutY",   formatDouble(node.getLayoutY())));
 
-        var bounds = node.getBoundsInLocal();
-        rows.add(row("width",     formatDouble(bounds.getWidth())));
-        rows.add(row("height",    formatDouble(bounds.getHeight())));
+        // Layout bounds reflect the actual placement after layout.
+        Bounds inParent = node.getBoundsInParent();
+        rows.add(row("x",      formatDouble(inParent.getMinX())));
+        rows.add(row("y",      formatDouble(inParent.getMinY())));
+        rows.add(row("width",  formatDouble(inParent.getWidth())));
+        rows.add(row("height", formatDouble(inParent.getHeight())));
 
-        rows.add(row("visible",   String.valueOf(node.isVisible())));
-        rows.add(row("managed",   String.valueOf(node.isManaged())));
-        rows.add(row("opacity",   formatDouble(node.getOpacity())));
+        rows.add(row("visible", String.valueOf(node.isVisible())));
+        rows.add(row("managed", String.valueOf(node.isManaged())));
+        rows.add(row("opacity", formatDouble(node.getOpacity())));
 
-        if (node instanceof javafx.scene.layout.Region region) {
-            rows.add(row("prefWidth",  formatDouble(region.getPrefWidth())));
-            rows.add(row("prefHeight", formatDouble(region.getPrefHeight())));
-            rows.add(row("padding",    region.getPadding().toString()));
+        if (node instanceof Region region) {
+            rows.add(row("prefSize", String.format(Locale.ROOT, "%s × %s",
+                    formatPref(region.getPrefWidth()),
+                    formatPref(region.getPrefHeight()))));
+            rows.add(row("padding",  region.getPadding().toString()));
         }
         if (node instanceof javafx.scene.control.Labeled labeled) {
-            String text = labeled.getText();
-            rows.add(row("text", text == null ? "—" : text));
+            rows.add(row("text", orDash(labeled.getText())));
         }
 
         table.getItems().setAll(rows);
     }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Formatting helpers
+    // ─────────────────────────────────────────────────────────────────────────
 
     private static PropertyRow row(String name, String value) {
         return new PropertyRow(name, value);
     }
 
     private static String formatDouble(double d) {
-        if (Double.isNaN(d) || d == -1.0) return "—";
+        if (Double.isNaN(d)) return "—";
         return String.format(Locale.ROOT, "%.1f", d);
     }
 
+    private static String formatPref(double d) {
+        // -1.0 means USE_COMPUTED_SIZE in JavaFX.
+        if (d == Region.USE_COMPUTED_SIZE) return "auto";
+        return String.format(Locale.ROOT, "%.0f", d);
+    }
+
+    private static String orDash(String s) {
+        return (s == null || s.isBlank()) ? "—" : s;
+    }
+
+    /**
+     * Renders a node as e.g. {@code Label #title.heading "Hello"}.
+     * Limits style-class display to keep the tree readable.
+     */
     private static String describe(Node node) {
         StringBuilder sb = new StringBuilder(node.getClass().getSimpleName());
         if (node.getId() != null) sb.append(" #").append(node.getId());
         if (!node.getStyleClass().isEmpty()) {
-            for (String sc : node.getStyleClass()) sb.append(".").append(sc);
+            int shown = 0;
+            for (String sc : node.getStyleClass()) {
+                if (sc.isBlank()) continue;
+                sb.append(".").append(sc);
+                if (++shown >= 2) break;
+            }
+            if (node.getStyleClass().size() > 2) sb.append("…");
         }
         if (node instanceof javafx.scene.control.Labeled labeled
                 && labeled.getText() != null
                 && !labeled.getText().isBlank()) {
             String t = labeled.getText().trim();
-            if (t.length() > 24) t = t.substring(0, 24) + "…";
+            if (t.length() > 28) t = t.substring(0, 28) + "…";
             sb.append("  \"").append(t).append("\"");
         }
         return sb.toString();

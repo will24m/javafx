@@ -6,10 +6,13 @@ import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.geometry.Insets;
 import javafx.scene.control.Label;
+import javafx.scene.control.OverrunStyle;
 import javafx.scene.control.TextField;
+import javafx.scene.control.Tooltip;
 import javafx.scene.control.TreeCell;
 import javafx.scene.control.TreeItem;
 import javafx.scene.control.TreeView;
+import javafx.util.Duration;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 
@@ -50,19 +53,28 @@ public class LessonNavigator extends VBox {
             protected void updateItem(Lesson lesson, boolean empty) {
                 super.updateItem(lesson, empty);
                 getStyleClass().removeAll("tier-cell", "lesson-cell");
+                setTextOverrun(OverrunStyle.ELLIPSIS);
                 if (empty) {
                     setText(null);
                     setGraphic(null);
+                    setTooltip(null);
                 } else if (lesson == null) {
                     Object tag = getTreeItem() != null ? getTreeItem().getGraphic() : null;
                     String tier = tag instanceof Label lbl ? lbl.getText() : "";
                     int count = getTreeItem() == null ? 0 : getTreeItem().getChildren().size();
                     setText(capitalize(tier).toUpperCase(Locale.ROOT) + "   " + count);
                     setGraphic(null);
+                    setTooltip(null);
                     getStyleClass().add("tier-cell");
                 } else {
-                    setText(String.format("%03d   %s", lesson.meta.order, lesson.meta.title));
+                    String label = String.format("%03d   %s", lesson.meta.order, lesson.meta.title);
+                    setText(label);
                     setGraphic(null);
+                    Tooltip tip = new Tooltip(lesson.meta.title
+                            + "\n" + lesson.meta.id
+                            + "  ·  " + lesson.meta.estimatedMinutes + " min");
+                    tip.setShowDelay(Duration.millis(400));
+                    setTooltip(tip);
                     getStyleClass().add("lesson-cell");
                 }
             }
@@ -150,4 +162,10 @@ public class LessonNavigator extends VBox {
     public Lesson getSelectedLesson() { return selectedLesson.get(); }
 
     public int getLessonCount() { return allLessons.size(); }
+
+    /** Focus the search field — invoked by the ⌘+F accelerator. */
+    public void focusSearch() {
+        search.requestFocus();
+        search.selectAll();
+    }
 }

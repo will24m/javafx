@@ -23,6 +23,7 @@ public class PreviewHost extends StackPane {
     public PreviewHost() {
         getStyleClass().add("preview-host");
         setId("previewHost");
+        setPadding(new javafx.geometry.Insets(10));
 
         this.sandboxContainer = new StackPane();
         sandboxContainer.getStyleClass().addAll("preview-sandbox", "sandbox-root");

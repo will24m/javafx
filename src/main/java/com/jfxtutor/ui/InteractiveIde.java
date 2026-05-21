@@ -12,10 +12,12 @@ import javafx.scene.Parent;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.SplitPane;
+import javafx.scene.control.Tooltip;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
+import javafx.util.Duration;
 
 /**
  * Self-contained mini-IDE: editor on top, live preview underneath, plus a
@@ -63,23 +65,29 @@ public class InteractiveIde extends VBox {
         this.statusLabel = new Label("Idle");
         statusLabel.getStyleClass().addAll("ide-status", "ide-status-idle");
 
-        this.runButton = new Button("Run");
-        runButton.getStyleClass().add("ide-button");
+        this.runButton = new Button("▶ Run");
+        runButton.getStyleClass().addAll("ide-button", "ide-button-primary");
         runButton.setOnAction(e -> runNow());
+        Tooltip runTip = new Tooltip("Run snippet now  (⌘+Enter)");
+        runTip.setShowDelay(Duration.millis(400));
+        runButton.setTooltip(runTip);
 
-        this.resetButton = new Button("Reset");
+        this.resetButton = new Button("↺ Reset");
         resetButton.getStyleClass().add("ide-button");
         resetButton.setOnAction(e -> resetToStarter());
+        Tooltip resetTip = new Tooltip("Restore the lesson's starter snippet  (⇧+⌘+R)");
+        resetTip.setShowDelay(Duration.millis(400));
+        resetButton.setTooltip(resetTip);
 
         Region toolbarSpacer = new Region();
         HBox.setHgrow(toolbarSpacer, Priority.ALWAYS);
 
         HBox toolbar = new HBox(8,
-                new Label("IDE"), lessonChip, toolbarSpacer,
+                lessonChip, toolbarSpacer,
                 statusLabel, resetButton, runButton);
         toolbar.getStyleClass().add("ide-toolbar");
         toolbar.setAlignment(Pos.CENTER_LEFT);
-        toolbar.setPadding(new Insets(6, 10, 6, 10));
+        toolbar.setPadding(new Insets(8, 12, 8, 12));
 
         Label editorHeader = new Label("editor.java");
         editorHeader.getStyleClass().add("ide-pane-header");
@@ -89,7 +97,19 @@ public class InteractiveIde extends VBox {
 
         Label previewHeader = new Label("preview");
         previewHeader.getStyleClass().add("ide-pane-header");
-        VBox previewBox = new VBox(previewHeader, previewHost);
+        // Live size indicator on the right of the preview header.
+        Label previewSize = new Label("");
+        previewSize.getStyleClass().add("ide-pane-header-side");
+        Region phSpacer = new Region();
+        HBox.setHgrow(phSpacer, Priority.ALWAYS);
+        HBox previewHeaderBar = new HBox(previewHeader, phSpacer, previewSize);
+        previewHeaderBar.getStyleClass().add("ide-pane-header-bar");
+        previewHeaderBar.setAlignment(Pos.CENTER_LEFT);
+        // Update the size indicator from the preview's bounds.
+        previewHost.widthProperty().addListener((o, a, b) -> updatePreviewSize(previewSize));
+        previewHost.heightProperty().addListener((o, a, b) -> updatePreviewSize(previewSize));
+
+        VBox previewBox = new VBox(previewHeaderBar, previewHost);
         previewBox.getStyleClass().add("ide-preview-box");
         VBox.setVgrow(previewHost, Priority.ALWAYS);
 
@@ -97,7 +117,12 @@ public class InteractiveIde extends VBox {
         split.setOrientation(Orientation.VERTICAL);
         split.getStyleClass().add("ide-split");
         split.getItems().addAll(editorBox, previewBox);
-        split.setDividerPositions(0.5);
+        // Editor takes less space than preview by default — most lessons
+        // have <20 lines of code but want a roomy canvas to render into.
+        split.setDividerPositions(0.42);
+        SplitPane.setResizableWithParent(editorBox, false);
+        editorBox.setMinHeight(120);
+        previewBox.setMinHeight(140);
         VBox.setVgrow(split, Priority.ALWAYS);
 
         getChildren().addAll(toolbar, split);
@@ -146,6 +171,16 @@ public class InteractiveIde extends VBox {
         statusLabel.getStyleClass().removeAll(
                 "ide-status-idle", "ide-status-busy", "ide-status-ok", "ide-status-error");
         statusLabel.getStyleClass().add(styleClass);
+    }
+
+    private void updatePreviewSize(Label sizeLabel) {
+        double w = previewHost.getWidth();
+        double h = previewHost.getHeight();
+        if (w <= 0 || h <= 0) {
+            sizeLabel.setText("");
+        } else {
+            sizeLabel.setText(String.format("%.0f × %.0f", w, h));
+        }
     }
 
     public Parent getMountedRoot() { return previewHost.getSnippetRoot(); }

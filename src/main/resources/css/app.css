@@ -43,21 +43,23 @@
 }
 .host-root .app-brand {
     -fx-text-fill: -fx-text-0;
-    -fx-font-size: 13px;
-    -fx-font-weight: bold;
+    -fx-font-size: 14px;
+    -fx-font-weight: 800;
+    -fx-padding: 0 2 0 0;
 }
 .host-root .app-header-sep {
-    -fx-text-fill: -fx-text-3;
-    -fx-font-size: 13px;
+    -fx-text-fill: -fx-accent-1;
+    -fx-font-size: 14px;
+    -fx-padding: 0 2 0 2;
 }
 .host-root .app-crumbs {
     -fx-text-fill: -fx-text-1;
     -fx-font-size: 12px;
 }
-.host-root .app-tagline {
+.host-root .app-shortcuts {
     -fx-text-fill: -fx-text-3;
-    -fx-font-size: 11px;
-    -fx-font-style: italic;
+    -fx-font-size: 10px;
+    -fx-font-family: "JetBrains Mono", "Menlo", "Consolas", monospace;
 }
 
 /* -------- Status bar ----------------------------------------- */
@@ -227,7 +229,7 @@
     -fx-border-width: 1;
     -fx-background-radius: 4;
     -fx-border-radius: 4;
-    -fx-padding: 3 12 3 12;
+    -fx-padding: 4 12 4 12;
     -fx-cursor: hand;
 }
 .host-root .ide-button:hover {
@@ -236,6 +238,19 @@
 }
 .host-root .ide-button:armed {
     -fx-background-color: -fx-accent-3;
+}
+.host-root .ide-button-primary {
+    -fx-background-color: -fx-accent-2;
+    -fx-text-fill: #ffffff !important;
+    -fx-font-weight: bold !important;
+    -fx-border-color: derive(-fx-accent-2, 20%);
+}
+.host-root .ide-button-primary:hover {
+    -fx-background-color: derive(-fx-accent-2, 12%);
+    -fx-border-color: -fx-accent-1;
+}
+.host-root .ide-button-primary:armed {
+    -fx-background-color: derive(-fx-accent-2, -20%);
 }
 .host-root .ide-status {
     -fx-padding: 2 10 2 10;
@@ -249,14 +264,29 @@
 .host-root .ide-status-error { -fx-background-color: derive(-fx-error, -50%);   -fx-text-fill: -fx-error !important; }
 
 .host-root .ide-pane-header {
-    -fx-background-color: -fx-bg-1;
     -fx-text-fill: -fx-text-3;
     -fx-font-family: "JetBrains Mono", "Menlo", "Consolas", monospace;
     -fx-font-size: 10px;
-    -fx-padding: 4 12 4 12;
+    -fx-padding: 0;
+    -fx-max-width: infinity;
+}
+.host-root .ide-pane-header-side {
+    -fx-text-fill: -fx-text-3;
+    -fx-font-family: "JetBrains Mono", "Menlo", "Consolas", monospace;
+    -fx-font-size: 10px;
+}
+.host-root .ide-pane-header-bar {
+    -fx-background-color: -fx-bg-1;
+    -fx-padding: 5 14 5 14;
     -fx-border-color: transparent transparent -fx-border-soft transparent;
     -fx-border-width: 0 0 1 0;
-    -fx-max-width: infinity;
+}
+/* The standalone editor.java header reuses the same chrome as the bar. */
+.host-root .ide-editor-box > .ide-pane-header {
+    -fx-background-color: -fx-bg-1;
+    -fx-padding: 5 14 5 14;
+    -fx-border-color: transparent transparent -fx-border-soft transparent;
+    -fx-border-width: 0 0 1 0;
 }
 .host-root .ide-editor-box,
 .host-root .ide-preview-box {
@@ -304,14 +334,20 @@
 .host-root .editor-textarea .bracket   { -fx-fill: #c8c9cd; }
 .host-root .editor-textarea .semicolon { -fx-fill: -fx-text-2; }
 
-/* -------- Preview host --------------------------------------- */
+/* -------- Preview host ---------------------------------------
+   Outer host is the dark IDE surround (padding from Java code).
+   The white sandbox sits inside as a framed canvas with a subtle
+   shadow so it looks like a deliberate surface, not a bug. */
 .host-root .preview-host {
-    -fx-background-color: #ffffff;
-    -fx-border-color: -fx-border-hard transparent transparent transparent;
-    -fx-border-width: 1 0 0 0;
+    -fx-background-color: -fx-bg-0;
 }
 .host-root .preview-sandbox {
-    -fx-background-color: transparent;
+    -fx-background-color: #ffffff;
+    -fx-background-radius: 4;
+    -fx-border-color: -fx-border-hard;
+    -fx-border-width: 1;
+    -fx-border-radius: 4;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.35), 6, 0, 0, 1);
 }
 .host-root .preview-error-overlay {
     -fx-background-color: rgba(141, 41, 41, 0.94);
@@ -319,6 +355,7 @@
     -fx-max-height: 200;
     -fx-border-color: -fx-error transparent transparent transparent;
     -fx-border-width: 2 0 0 0;
+    -fx-background-radius: 0 0 4 4;
 }
 .host-root .preview-error-label {
     -fx-text-fill: #ffeaea;
