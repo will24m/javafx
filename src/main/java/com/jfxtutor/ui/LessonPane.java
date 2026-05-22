@@ -123,7 +123,9 @@ public class LessonPane extends VBox {
         section.getChildren().add(header);
 
         for (ChallengeDef def : challenges) {
-            section.getChildren().add(buildChallengeRow(def));
+            javafx.scene.Node row = buildChallengeRow(def);
+            VBox.setMargin(row, new Insets(0, 24, 0, 24));
+            section.getChildren().add(row);
         }
         return section;
     }

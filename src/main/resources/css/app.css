@@ -445,7 +445,6 @@
     -fx-border-color: -fx-border-soft;
     -fx-border-width: 1;
     -fx-border-radius: 6;
-    -fx-margin: 0 24 0 24;
 }
 .host-root .challenge-description {
     -fx-text-fill: -fx-text-1;
@@ -466,13 +465,6 @@
     -fx-padding: 6 8 6 8;
     -fx-background-radius: 4;
 }
-.host-root .challenge-status-pass ~ .challenge-feedback,
-.host-root .challenge-row:pass .challenge-feedback {
-    -fx-text-fill: -fx-success;
-    -fx-background-color: derive(-fx-success, -65%);
-}
-/* Feedback color is driven by the status class set in Java, not a sibling selector.
-   These rules use a direct class on the feedback label for reliability. */
 .host-root .challenge-feedback-pass {
     -fx-text-fill: -fx-success;
     -fx-background-color: derive(-fx-success, -65%);
