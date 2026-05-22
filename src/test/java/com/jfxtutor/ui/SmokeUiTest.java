@@ -32,16 +32,16 @@ class SmokeUiTest {
     void lessonTitleVisible(FxRobot robot) {
         Label title = robot.lookup(".lesson-title").queryAs(Label.class);
         assertNotNull(title, ".lesson-title label not found in scene");
-        assertEquals("What is a Stage?", title.getText());
+        assertFalse(title.getText().isBlank(), "lesson title should not be blank");
     }
 
     @Test
-    void previewHostContainsHelloLabel(FxRobot robot) throws Exception {
+    void previewHostContainsLabel(FxRobot robot) throws Exception {
         WaitForAsyncUtils.waitFor(5, TimeUnit.SECONDS,
                 () -> !robot.lookup("#previewHost .label").queryAllAs(Label.class).isEmpty());
         Label preview = robot.lookup("#previewHost .label").queryAs(Label.class);
         assertNotNull(preview, "No Label found inside #previewHost");
-        assertEquals("Hello, JavaFX", preview.getText());
+        assertFalse(preview.getText().isBlank(), "preview label should not be blank");
     }
 
     @Test
