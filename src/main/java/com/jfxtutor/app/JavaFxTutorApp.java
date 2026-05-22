@@ -1,6 +1,8 @@
 package com.jfxtutor.app;
 
 import com.jfxtutor.data.progress.ProgressStore;
+import com.jfxtutor.ui.KeyBindings;
+import com.jfxtutor.ui.ThemeManager;
 import com.jfxtutor.util.AppLog;
 import javafx.application.Application;
 import javafx.scene.Scene;
@@ -20,6 +22,8 @@ public class JavaFxTutorApp extends Application {
 
     private MainView mainView;
     private ProgressStore progressStore;
+    private ThemeManager themeManager;
+    private KeyBindings keyBindings;
 
     public static void main(String[] args) {
         AppLog.info("app", "Gradle handed control to main(); asking JavaFX to launch the application.");
@@ -38,6 +42,19 @@ public class JavaFxTutorApp extends Application {
         Scene scene = new Scene(mainView, 1200, 800);
         scene.getStylesheets().add(
                 getClass().getResource("/css/app.css").toExternalForm());
+
+        // Theme and key bindings are scene-level, so they're created after the Scene.
+        this.themeManager = new ThemeManager(scene, progressStore);
+        this.keyBindings  = new KeyBindings(scene);
+
+        // Wire up keyboard shortcuts.
+        var nav = mainView.getLessonNavigator();
+        keyBindings.onNextLesson(() -> nav.selectNext());
+        keyBindings.onPrevLesson(() -> nav.selectPrev());
+        keyBindings.onRecompile(() -> mainView.getSnippetRunner().forceRun());
+        keyBindings.onToggleInspector(() -> mainView.getInspectorPane().setVisible(
+                !mainView.getInspectorPane().isVisible()));
+        keyBindings.onCycleTheme(themeManager::cycleTheme);
 
         // The Stage is the native OS window. Once show() returns, user events
         // and layout pulses drive the rest of the application.

@@ -1,0 +1,71 @@
+/*
+ * theme-hc.css — High-contrast accessibility theme.
+ * Pure black background, pure white text, thick borders, no gradients.
+ * Meets WCAG AA 4.5:1 contrast ratio for all text.
+ */
+
+.host-root {
+    -fx-bg-0:        #000000;
+    -fx-bg-1:        #000000;
+    -fx-bg-2:        #0a0a0a;
+    -fx-bg-3:        #111111;
+    -fx-bg-4:        #1a1a1a;
+    -fx-border-soft: #555555;
+    -fx-border-hard: #aaaaaa;
+    -fx-text-0:      #ffffff;
+    -fx-text-1:      #ffffff;
+    -fx-text-2:      #dddddd;
+    -fx-text-3:      #aaaaaa;
+    -fx-accent-1:    #ffff00;   /* yellow — high-contrast accessible focus */
+    -fx-accent-2:    #ffff00;
+    -fx-accent-3:    #333300;
+    -fx-success:     #00ff00;
+    -fx-warning:     #ffaa00;
+    -fx-error:       #ff4444;
+
+    -fx-base:                   #000000;
+    -fx-background:             #000000;
+    -fx-control-inner-background: #0a0a0a;
+    -fx-accent:                 #ffff00;
+    -fx-focus-color:            #ffff00;
+    -fx-faint-focus-color:      transparent;
+}
+
+/* Flat headers — no gradient in HC mode */
+.host-root .app-header {
+    -fx-background-color: #000000;
+    -fx-border-color: #aaaaaa transparent #aaaaaa transparent;
+    -fx-border-width: 2 0 2 0;
+}
+
+.host-root .app-status-bar {
+    -fx-background-color: #000000;
+    -fx-border-color: #aaaaaa transparent transparent transparent;
+    -fx-border-width: 2 0 0 0;
+}
+
+/* Bold focus rings */
+.host-root .button:focused,
+.host-root .toggle-button:focused,
+.host-root .text-field:focused {
+    -fx-border-color: #ffff00;
+    -fx-border-width: 2;
+}
+
+/* Thick tree/table borders */
+.host-root .tree-view,
+.host-root .table-view {
+    -fx-border-color: #aaaaaa;
+    -fx-border-width: 1;
+}
+
+.host-root .tree-cell:selected,
+.host-root .table-row-cell:selected {
+    -fx-background-color: #333300;
+    -fx-text-fill: #ffff00;
+}
+
+/* Challenge status in HC uses text labels not unicode circles */
+.host-root .challenge-status-idle { -fx-text-fill: #aaaaaa; }
+.host-root .challenge-status-pass { -fx-text-fill: #00ff00; }
+.host-root .challenge-status-fail { -fx-text-fill: #ff4444; }

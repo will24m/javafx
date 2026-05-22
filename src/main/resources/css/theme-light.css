@@ -1,0 +1,73 @@
+/*
+ * theme-light.css — Light theme.
+ * Overrides the color tokens defined on .host-root in app.css.
+ * All structural styling (padding, borders, font sizes) remains in app.css;
+ * only the color palette is swapped here.
+ */
+
+.host-root {
+    -fx-bg-0:        #e8eaed;
+    -fx-bg-1:        #f0f2f5;
+    -fx-bg-2:        #ffffff;
+    -fx-bg-3:        #e4e7ec;
+    -fx-bg-4:        #d6dae2;
+    -fx-border-soft: #d0d4db;
+    -fx-border-hard: #b8bdc6;
+    -fx-text-0:      #0d0e10;
+    -fx-text-1:      #2a2d32;
+    -fx-text-2:      #5a5f6a;
+    -fx-text-3:      #8a8e96;
+    -fx-accent-1:    #1a5cbf;
+    -fx-accent-2:    #2467d6;
+    -fx-accent-3:    #c5d9f7;
+    -fx-success:     #2e7d32;
+    -fx-warning:     #b36000;
+    -fx-error:       #c0392b;
+
+    -fx-base:                   -fx-bg-1;
+    -fx-background:             -fx-bg-1;
+    -fx-control-inner-background: -fx-bg-2;
+    -fx-accent:                 -fx-accent-2;
+    -fx-focus-color:            -fx-accent-1;
+}
+
+/* Header uses a lighter gradient in light mode */
+.host-root .app-header {
+    -fx-background-color: linear-gradient(to bottom, #dde0e7, #e8eaed);
+    -fx-border-color: #b8bdc6 transparent -fx-border-hard transparent;
+}
+
+.host-root .app-status-bar {
+    -fx-background-color: linear-gradient(to bottom, #e8eaed, #dde0e7);
+    -fx-border-color: -fx-border-hard transparent transparent transparent;
+}
+
+/* Editor needs explicit overrides because CodeArea has its own stylesheet */
+.host-root .code-area {
+    -fx-background-color: #fafbfc;
+}
+.host-root .code-area .content {
+    -fx-background-color: #fafbfc;
+}
+.host-root .code-area .caret {
+    -fx-stroke: #0d0e10;
+}
+.host-root .code-area .paragraph-text .text {
+    -fx-fill: #2a2d32;
+}
+
+/* Tree and table surfaces */
+.host-root .tree-view,
+.host-root .table-view {
+    -fx-background-color: -fx-bg-2;
+}
+.host-root .tree-cell,
+.host-root .table-row-cell {
+    -fx-background-color: -fx-bg-2;
+    -fx-text-fill: -fx-text-1;
+}
+.host-root .tree-cell:selected,
+.host-root .table-row-cell:selected {
+    -fx-background-color: -fx-accent-3;
+    -fx-text-fill: -fx-text-0;
+}

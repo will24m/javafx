@@ -240,6 +240,20 @@ public class LessonNavigator extends VBox {
 
     public int getLessonCount() { return allLessons.size(); }
 
+    public void selectNext() {
+        Lesson cur = getSelectedLesson();
+        if (cur == null || allLessons.isEmpty()) return;
+        int idx = allLessons.indexOf(cur);
+        if (idx >= 0 && idx < allLessons.size() - 1) selectLesson(allLessons.get(idx + 1));
+    }
+
+    public void selectPrev() {
+        Lesson cur = getSelectedLesson();
+        if (cur == null || allLessons.isEmpty()) return;
+        int idx = allLessons.indexOf(cur);
+        if (idx > 0) selectLesson(allLessons.get(idx - 1));
+    }
+
     /** Focus the search field — invoked by the ⌘+F accelerator. */
     public void focusSearch() {
         search.requestFocus();

@@ -63,6 +63,9 @@ public class PreviewHost extends StackPane {
 
     public Parent getSnippetRoot() { return currentRoot; }
 
+    /** The inner pane that contains snippet output — used to anchor the hover overlay. */
+    public StackPane getMountPane() { return sandboxContainer; }
+
     /** Show an error banner over the current preview without unmounting it. */
     public void showError(String message) {
         // Keeping the previous successful preview visible makes compile errors

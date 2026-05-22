@@ -427,6 +427,43 @@
     -fx-border-color: transparent;
 }
 
+/* -------- Inspector extras (tabs + mirror button) ------------ */
+.host-root .inspector-mirror-btn {
+    -fx-font-size: 10px;
+    -fx-padding: 2 8 2 8;
+    -fx-background-radius: 3;
+}
+.host-root .inspector-mirror-btn:selected {
+    -fx-background-color: -fx-accent-3;
+    -fx-text-fill: -fx-accent-1;
+    -fx-border-color: -fx-accent-1;
+    -fx-border-width: 1;
+    -fx-border-radius: 3;
+}
+.host-root .inspector-tabs {
+    -fx-tab-min-height: 24px;
+    -fx-tab-max-height: 24px;
+}
+.host-root .inspector-tabs .tab {
+    -fx-background-color: -fx-bg-1;
+    -fx-padding: 2 10 2 10;
+}
+.host-root .inspector-tabs .tab:selected {
+    -fx-background-color: -fx-bg-2;
+}
+.host-root .inspector-tabs .tab .tab-label {
+    -fx-text-fill: -fx-text-2;
+    -fx-font-size: 11px;
+}
+.host-root .inspector-tabs .tab:selected .tab-label {
+    -fx-text-fill: -fx-text-0;
+}
+.host-root .inspector-tabs .tab-header-background {
+    -fx-background-color: -fx-bg-1;
+    -fx-border-color: transparent transparent -fx-border-hard transparent;
+    -fx-border-width: 0 0 1 0;
+}
+
 /* -------- Challenges section --------------------------------- */
 .host-root .challenge-section {
     -fx-border-color: -fx-border-hard transparent transparent transparent;

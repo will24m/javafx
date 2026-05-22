@@ -1,0 +1,27 @@
+/*
+ * theme-dark.css — Dark theme override (default).
+ * Loaded on top of app.css to reinforce the dark palette.
+ * Most dark styling already lives in app.css; this file exists
+ * so the ThemeManager has a concrete stylesheet to swap in/out.
+ */
+
+/* Re-assert the dark bg/text tokens on the host root. */
+.host-root {
+    -fx-bg-0:        #0f1014;
+    -fx-bg-1:        #15171b;
+    -fx-bg-2:        #1c1f24;
+    -fx-bg-3:        #232730;
+    -fx-bg-4:        #2d323c;
+    -fx-border-soft: #2a2d33;
+    -fx-border-hard: #383c45;
+    -fx-text-0:      #f0f1f4;
+    -fx-text-1:      #c8c9cd;
+    -fx-text-2:      #8a8e96;
+    -fx-text-3:      #5d6066;
+    -fx-accent-1:    #6ea8ff;
+    -fx-accent-2:    #4a8cff;
+    -fx-accent-3:    #2d4a8a;
+    -fx-success:     #6dbe6d;
+    -fx-warning:     #d6a55c;
+    -fx-error:       #e26060;
+}

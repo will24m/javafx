@@ -138,6 +138,10 @@ public class MainView extends BorderPane {
             progressStore.flush();
         });
 
+        // Wire the inspector overlay and Mirror mode.
+        inspectorPane.setPreviewHost(ide.getPreviewHost());
+        inspectorPane.setHostRoot(this);
+
         // Refresh the Inspector whenever a new snippet root is mounted.
         // The inspector does not know about compilation; it only receives the
         // latest JavaFX Parent once the IDE successfully mounts one.

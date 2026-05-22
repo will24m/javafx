@@ -81,6 +81,11 @@ public class SnippetRunner {
         debounce.playFromStart();
     }
 
+    /** Re-run the last known source immediately — bound to Cmd+R. */
+    public void forceRun() {
+        if (pendingSource != null) recompileNow(pendingSource);
+    }
+
     /** Skip debounce; useful for the initial mount after lesson load and Run button clicks. */
     public void recompileNow(String source) {
         if (stopped) return;
