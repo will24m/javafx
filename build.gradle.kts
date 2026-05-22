@@ -2,6 +2,7 @@ plugins {
     java
     application
     id("org.openjfx.javafxplugin") version "0.1.0"
+    id("org.beryx.runtime") version "1.13.1"
 }
 
 group = "com.jfxtutor"
@@ -72,4 +73,51 @@ tasks.withType<Test>().configureEach {
 tasks.register<Copy>("copyDependencies") {
     from(configurations.runtimeClasspath)
     into(layout.buildDirectory.dir("dependencies"))
+}
+
+// ── jpackage installer scaffold ──────────────────────────────────────────────
+// Run: ./gradlew jpackage
+// Produces a platform-native installer under build/jpackage/.
+// Requires: jdk.jpackage module (bundled with JDK 16+).
+//
+// Per-platform outputs:
+//   macOS  → JavaFX Tutor-<version>.dmg  (requires Xcode CLI tools)
+//   Windows → JavaFX Tutor-<version>.msi  (requires WiX Toolset 3.x)
+//   Linux  → javafx-tutor-<version>.deb   (requires dpkg-deb)
+//
+// To enable code signing on macOS add:
+//   signingOptions { mac.signBundle.set(true); mac.signingKeyUserName.set("Developer ID ...") }
+runtime {
+    options.set(listOf("--strip-debug", "--compress", "2", "--no-header-files", "--no-man-pages"))
+    modules.set(listOf(
+        "java.base", "java.desktop", "java.logging", "java.management",
+        "java.naming", "java.net.http", "java.prefs", "java.sql",
+        "java.xml", "jdk.unsupported",
+        "javafx.base", "javafx.controls", "javafx.fxml",
+        "javafx.graphics", "javafx.media", "javafx.web"
+    ))
+    jpackage {
+        appVersion = project.version.toString()
+        imageName  = "JavaFX Tutor"
+        installerName = "JavaFX Tutor"
+        // Icon paths: place your icons at src/main/resources/icons/
+        //   app.icns  → macOS
+        //   app.ico   → Windows
+        //   app.png   → Linux (512×512 recommended)
+        val iconsDir = project.file("src/main/resources/icons")
+        if (iconsDir.exists()) {
+            when {
+                org.gradle.internal.os.OperatingSystem.current().isMacOsX  ->
+                    imageOptions.addAll(listOf("--icon", iconsDir.resolve("app.icns").absolutePath))
+                org.gradle.internal.os.OperatingSystem.current().isWindows ->
+                    imageOptions.addAll(listOf("--icon", iconsDir.resolve("app.ico").absolutePath))
+                else ->
+                    imageOptions.addAll(listOf("--icon", iconsDir.resolve("app.png").absolutePath))
+            }
+        }
+        installerOptions.addAll(listOf(
+            "--vendor", "jfxtutor",
+            "--description", "Interactive JavaFX learning environment"
+        ))
+    }
 }

@@ -1,6 +1,7 @@
 package com.jfxtutor.app;
 
 import com.jfxtutor.data.progress.ProgressStore;
+import com.jfxtutor.ui.CommandPalette;
 import com.jfxtutor.ui.KeyBindings;
 import com.jfxtutor.ui.ThemeManager;
 import com.jfxtutor.util.AppLog;
@@ -24,6 +25,7 @@ public class JavaFxTutorApp extends Application {
     private ProgressStore progressStore;
     private ThemeManager themeManager;
     private KeyBindings keyBindings;
+    private CommandPalette commandPalette;
 
     public static void main(String[] args) {
         AppLog.info("app", "Gradle handed control to main(); asking JavaFX to launch the application.");
@@ -55,6 +57,13 @@ public class JavaFxTutorApp extends Application {
         keyBindings.onToggleInspector(() -> mainView.getInspectorPane().setVisible(
                 !mainView.getInspectorPane().isVisible()));
         keyBindings.onCycleTheme(themeManager::cycleTheme);
+
+        // Command palette — lesson quick-open.
+        this.commandPalette = new CommandPalette();
+        commandPalette.setLessons(nav.getAllLessons());
+        commandPalette.setOnSelect(lesson -> nav.selectLesson(lesson));
+        keyBindings.onCommandPalette(() -> commandPalette.show(primaryStage));
+        keyBindings.onFind(() -> nav.focusSearch());
 
         // The Stage is the native OS window. Once show() returns, user events
         // and layout pulses drive the rest of the application.

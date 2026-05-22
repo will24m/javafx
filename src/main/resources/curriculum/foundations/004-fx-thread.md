@@ -22,8 +22,21 @@ starterSnippet: |
   }
 challenges:
   - id: c1
-    description: "Wrap the status.setText() call in Platform.runLater() so it runs on the FX thread"
-    assertion: containsNodeOfType(Label)
+    description: "Wrap the status.setText() call in Platform.runLater() and add a second Label with text \"Thread-safe\" below the button to confirm the fix"
+    assertion: containsLabeledWithText(text="Thread-safe")
+    solutionSnippet: |
+      public static Parent build() {
+          Label status = new Label("Waiting...");
+          Label badge = new Label("Thread-safe");
+          Button start = new Button("Start background task");
+          start.setOnAction(e -> {
+              new Thread(() -> {
+                  try { Thread.sleep(1000); } catch (InterruptedException ex) {}
+                  Platform.runLater(() -> status.setText("Done!"));
+              }).start();
+          });
+          return new VBox(10, status, start, badge);
+      }
 nextLesson: 005-labels-and-buttons
 ---
 

@@ -22,6 +22,7 @@ import org.commonmark.node.SoftLineBreak;
 import org.commonmark.node.StrongEmphasis;
 import org.commonmark.parser.Parser;
 import javafx.geometry.Insets;
+import javafx.scene.AccessibleRole;
 import javafx.scene.Parent;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
@@ -57,6 +58,8 @@ public class LessonPane extends VBox {
     private com.jfxtutor.data.progress.ProgressStore progressStore;
     /** Id of the lesson currently displayed — used when recording challenge results. */
     private String currentLessonId;
+    /** Full lesson — kept for the rollup check in buildChallengeRow. */
+    private Lesson currentLesson;
     /** Called after a challenge is newly passed so the navigator can refresh badges. */
     private Runnable onChallengePassed = () -> {};
 
@@ -93,6 +96,7 @@ public class LessonPane extends VBox {
 
     public void showLesson(Lesson lesson) {
         AppLog.info("lesson-pane", "Rendering lesson body for " + lesson.meta.id + ".");
+        this.currentLesson = lesson;
         this.currentLessonId = lesson.meta.id;
         content.getChildren().clear();
         content.getChildren().addAll(buildNodes(lesson.meta.title, lesson.markdownBody));
@@ -122,15 +126,17 @@ public class LessonPane extends VBox {
         header.getStyleClass().add("challenge-header");
         section.getChildren().add(header);
 
+        List<String> allIds = challenges.stream()
+                .map(c -> c.id).collect(java.util.stream.Collectors.toList());
         for (ChallengeDef def : challenges) {
-            javafx.scene.Node row = buildChallengeRow(def);
+            javafx.scene.Node row = buildChallengeRow(def, allIds);
             VBox.setMargin(row, new Insets(0, 24, 0, 24));
             section.getChildren().add(row);
         }
         return section;
     }
 
-    private javafx.scene.Node buildChallengeRow(ChallengeDef def) {
+    private javafx.scene.Node buildChallengeRow(ChallengeDef def, List<String> allChallengeIds) {
         VBox row = new VBox(6);
         row.getStyleClass().add("challenge-row");
         row.setPadding(new Insets(10, 14, 10, 14));
@@ -141,9 +147,15 @@ public class LessonPane extends VBox {
 
         Label statusIcon = new Label("○");
         statusIcon.getStyleClass().addAll("challenge-status", "challenge-status-idle");
+        statusIcon.setAccessibleRole(AccessibleRole.TEXT);
+        statusIcon.setAccessibleText("Not yet attempted");
 
         Button checkBtn = new Button("Check");
         checkBtn.getStyleClass().addAll("ide-button", "challenge-check-btn");
+        String challengeTitle = def.description != null ? def.description : "challenge";
+        checkBtn.setAccessibleRole(AccessibleRole.BUTTON);
+        checkBtn.setAccessibleText("Check: " + challengeTitle);
+        checkBtn.setAccessibleHelp("Run the assertion against your current snippet");
 
         HBox toolbar = new HBox(8, statusIcon, checkBtn);
         toolbar.getStyleClass().add("challenge-toolbar");
@@ -154,6 +166,8 @@ public class LessonPane extends VBox {
         feedback.getStyleClass().add("challenge-feedback");
         feedback.setVisible(false);
         feedback.setManaged(false);
+        feedback.setAccessibleRole(AccessibleRole.TEXT);
+        feedback.setAccessibleText("Challenge feedback");
 
         // Restore prior pass state from progress store without calling the assertion.
         if (progressStore != null && currentLessonId != null
@@ -161,6 +175,7 @@ public class LessonPane extends VBox {
             statusIcon.setText("✓");
             statusIcon.getStyleClass().removeAll("challenge-status-idle");
             statusIcon.getStyleClass().add("challenge-status-pass");
+            statusIcon.setAccessibleText("Passed");
         }
 
         checkBtn.setOnAction(e -> {
@@ -179,16 +194,20 @@ public class LessonPane extends VBox {
             if (result.passed()) {
                 statusIcon.setText("✓");
                 statusIcon.getStyleClass().add("challenge-status-pass");
+                statusIcon.setAccessibleText("Passed");
                 feedback.getStyleClass().add("challenge-feedback-pass");
+                feedback.setAccessibleText("Correct: " + result.message());
                 if (progressStore != null && currentLessonId != null) {
-                    progressStore.recordChallengePass(currentLessonId, def.id);
+                    progressStore.recordChallengePass(currentLessonId, def.id, allChallengeIds);
                     progressStore.flush();
                     onChallengePassed.run();
                 }
             } else {
                 statusIcon.setText("✗");
                 statusIcon.getStyleClass().add("challenge-status-fail");
+                statusIcon.setAccessibleText("Failed");
                 feedback.getStyleClass().add("challenge-feedback-fail");
+                feedback.setAccessibleText("Incorrect: " + result.message());
                 if (progressStore != null && currentLessonId != null) {
                     progressStore.recordAttempt(currentLessonId);
                 }

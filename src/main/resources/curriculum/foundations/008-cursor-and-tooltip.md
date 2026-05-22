@@ -16,8 +16,24 @@ starterSnippet: |
   }
 challenges:
   - id: c1
-    description: "Change the cursor to Cursor.CROSSHAIR"
-    assertion: containsNodeOfType(Button)
+    description: "Add a second Button labeled \"Crosshair btn\" with its cursor set to Cursor.CROSSHAIR"
+    assertion: countOfType(Button, n=2)
+    starterSnippet: |
+      public static Parent build() {
+          Button btn = new Button("Hover me");
+          btn.setCursor(Cursor.HAND);
+          Tooltip.install(btn, new Tooltip("I am a tooltip!"));
+          return new StackPane(btn);
+      }
+    solutionSnippet: |
+      public static Parent build() {
+          Button btn = new Button("Hover me");
+          btn.setCursor(Cursor.HAND);
+          Tooltip.install(btn, new Tooltip("I am a tooltip!"));
+          Button cross = new Button("Crosshair btn");
+          cross.setCursor(Cursor.CROSSHAIR);
+          return new VBox(10, btn, cross);
+      }
 nextLesson: 009-sizing-concepts
 ---
 

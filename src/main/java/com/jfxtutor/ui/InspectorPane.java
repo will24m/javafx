@@ -13,6 +13,7 @@ import javafx.geometry.Bounds;
 import javafx.geometry.Insets;
 import javafx.geometry.Orientation;
 import javafx.geometry.Pos;
+import javafx.scene.AccessibleRole;
 import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.control.Button;
@@ -88,6 +89,9 @@ public class InspectorPane extends VBox {
         mirrorBtn = new ToggleButton("Mirror");
         mirrorBtn.getStyleClass().addAll("ide-button", "inspector-mirror-btn");
         mirrorBtn.setOnAction(e -> toggleMirrorMode());
+        mirrorBtn.setAccessibleRole(AccessibleRole.TOGGLE_BUTTON);
+        mirrorBtn.setAccessibleText("Mirror mode");
+        mirrorBtn.setAccessibleHelp("When on, the inspector reflects the application's own scene graph instead of the snippet preview");
 
         HBox headerRow = new HBox(6, header, mirrorBtn);
         headerRow.setAlignment(Pos.CENTER_LEFT);
@@ -102,6 +106,9 @@ public class InspectorPane extends VBox {
         this.tree = new TreeView<>();
         tree.setShowRoot(true);
         tree.getStyleClass().add("inspector-tree");
+        tree.setAccessibleRole(AccessibleRole.TREE_VIEW);
+        tree.setAccessibleText("Scene graph tree");
+        tree.setAccessibleHelp("Shows the JavaFX node hierarchy of the current preview");
         tree.setCellFactory(tv -> new TreeCell<>() {
             @Override
             protected void updateItem(Node node, boolean empty) {
@@ -133,6 +140,9 @@ public class InspectorPane extends VBox {
 
         TabPane tabs = new TabPane(propTab, cssTab, boundsTab);
         tabs.getStyleClass().add("inspector-tabs");
+        tabs.setAccessibleRole(AccessibleRole.TAB_PANE);
+        tabs.setAccessibleText("Node detail tabs");
+        tabs.setAccessibleHelp("Properties, CSS metadata, and bounds information for the selected node");
         VBox.setVgrow(tabs, Priority.ALWAYS);
 
         // ── split: tree on top, tabs on bottom ───────────────────────────────

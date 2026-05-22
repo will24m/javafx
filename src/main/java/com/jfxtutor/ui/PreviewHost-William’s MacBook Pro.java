@@ -54,7 +54,6 @@ public class PreviewHost extends StackPane {
         errorArea.setEditable(false);
         errorArea.setWrapText(false);
         errorArea.getStyleClass().add("preview-error-area");
-        errorArea.setId("previewErrorArea");
         errorArea.setPrefRowCount(6);
         errorArea.setAccessibleRole(AccessibleRole.TEXT_AREA);
         errorArea.setAccessibleText("Compile error details");

@@ -110,15 +110,34 @@ public final class ProgressStore {
 
     /**
      * Record that challenge {@code challengeId} in lesson {@code lessonId} was passed.
-     * Marks the lesson as completed when all listed challenge ids have been passed.
+     * When {@code allChallengeIds} are all now in challengePasses, marks the lesson completed.
+     *
+     * @param allChallengeIds all challenge ids declared in the lesson (used for rollup check)
      */
-    public void recordChallengePass(String lessonId, String challengeId) {
+    public void recordChallengePass(String lessonId, String challengeId,
+                                    java.util.List<String> allChallengeIds) {
         ensure();
         LessonRecord rec = current.completed.computeIfAbsent(lessonId, k -> new LessonRecord());
         rec.challengePasses.put(challengeId, Instant.now());
         rec.attemptsCount++;
         AppLog.info("progress",
                 "Challenge pass recorded: lesson=" + lessonId + ", challenge=" + challengeId);
+        // Roll up: if every declared challenge is now passed, mark the lesson complete.
+        if (allChallengeIds != null && !allChallengeIds.isEmpty()
+                && rec.challengePasses.keySet().containsAll(allChallengeIds)) {
+            if (rec.completedAt == null) {
+                rec.completedAt = Instant.now();
+                AppLog.info("progress", "Lesson completed (all challenges passed): " + lessonId);
+            }
+        }
+    }
+
+    /**
+     * Backwards-compatible single-challenge overload — does NOT trigger rollup.
+     * Use the 3-arg version when the full challenge list is available.
+     */
+    public void recordChallengePass(String lessonId, String challengeId) {
+        recordChallengePass(lessonId, challengeId, null);
     }
 
     /** Mark a challenge attempt (regardless of pass/fail). */

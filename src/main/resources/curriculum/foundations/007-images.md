@@ -17,8 +17,25 @@ starterSnippet: |
   }
 challenges:
   - id: c1
-    description: "Set fitWidth to 100 and confirm the ImageView is present"
-    assertion: containsNodeOfType(ImageView)
+    description: "Change fitWidth to 100 and add a Label below the image that reads \"w=100\""
+    assertion: containsLabeledWithText(text="w=100")
+    starterSnippet: |
+      public static Parent build() {
+          Image img = new Image("https://via.placeholder.com/200", true);
+          ImageView view = new ImageView(img);
+          view.setFitWidth(200);
+          view.setPreserveRatio(true);
+          return new StackPane(view);
+      }
+    solutionSnippet: |
+      public static Parent build() {
+          Image img = new Image("https://via.placeholder.com/200", true);
+          ImageView view = new ImageView(img);
+          view.setFitWidth(100);
+          view.setPreserveRatio(true);
+          Label caption = new Label("w=100");
+          return new VBox(4, view, caption);
+      }
 nextLesson: 008-cursor-and-tooltip
 ---
 

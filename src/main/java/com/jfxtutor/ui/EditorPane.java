@@ -2,6 +2,7 @@ package com.jfxtutor.ui;
 
 import javafx.beans.property.ReadOnlyStringProperty;
 import javafx.beans.property.ReadOnlyStringWrapper;
+import javafx.scene.AccessibleRole;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 import org.fxmisc.flowless.VirtualizedScrollPane;
@@ -61,6 +62,9 @@ public class EditorPane extends VBox {
         this.codeArea = new CodeArea();
         codeArea.getStyleClass().add("editor-textarea");
         codeArea.setParagraphGraphicFactory(LineNumberFactory.get(codeArea));
+        codeArea.setAccessibleRole(AccessibleRole.TEXT_AREA);
+        codeArea.setAccessibleText("Java code editor");
+        codeArea.setAccessibleHelp("Edit the Java snippet here. The preview updates automatically as you type.");
 
         // Keep our lightweight read-only text property in sync with the editor.
         // InteractiveIde listens to this property and hands changes to SnippetRunner.

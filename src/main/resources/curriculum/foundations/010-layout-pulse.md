@@ -17,7 +17,27 @@ starterSnippet: |
 challenges:
   - id: c1
     description: "Add a second Label that shows the StackPane's width instead"
-    assertion: containsNodeOfType(Label)
+    assertion: countOfType(Label, n=2)
+    starterSnippet: |
+      public static Parent build() {
+          Label info = new Label("Resize the pane to trigger layout");
+          info.widthProperty().addListener((obs, old, w) ->
+              info.setText("label width = " + w.intValue()));
+          return new StackPane(info);
+      }
+    solutionSnippet: |
+      public static Parent build() {
+          StackPane root = new StackPane();
+          Label info = new Label("Resize the pane to trigger layout");
+          info.widthProperty().addListener((obs, old, w) ->
+              info.setText("label width = " + w.intValue()));
+          Label paneWidth = new Label("pane width = 0");
+          root.widthProperty().addListener((obs, old, w) ->
+              paneWidth.setText("pane width = " + w.intValue()));
+          VBox vb = new VBox(4, info, paneWidth);
+          root.getChildren().add(vb);
+          return root;
+      }
 nextLesson: 011-observable-properties
 ---
 

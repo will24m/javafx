@@ -7,6 +7,8 @@ import com.jfxtutor.util.AppLog;
 import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.geometry.Insets;
+import javafx.scene.AccessibleAttribute;
+import javafx.scene.AccessibleRole;
 import javafx.scene.control.Label;
 import javafx.scene.control.OverrunStyle;
 import javafx.scene.control.TextField;
@@ -50,6 +52,9 @@ public class LessonNavigator extends VBox {
         this.search = new TextField();
         search.setPromptText("Search lessons…");
         search.getStyleClass().add("nav-search");
+        search.setAccessibleRole(AccessibleRole.TEXT_FIELD);
+        search.setAccessibleText("Search lessons");
+        search.setAccessibleHelp("Type to filter the curriculum by title, ID, or tier");
         VBox searchBox = new VBox(search);
         searchBox.setPadding(new Insets(0, 10, 8, 10));
         search.textProperty().addListener((obs, old, val) -> applyFilter(val));
@@ -57,6 +62,9 @@ public class LessonNavigator extends VBox {
         this.tree = new TreeView<>();
         tree.setShowRoot(false);
         tree.getStyleClass().add("lesson-tree");
+        tree.setAccessibleRole(AccessibleRole.TREE_VIEW);
+        tree.setAccessibleText("Lesson list");
+        tree.setAccessibleHelp("Browse and select lessons from the curriculum");
         VBox.setVgrow(tree, Priority.ALWAYS);
 
         // The TreeView uses null values for tier/group rows and real Lesson
@@ -80,6 +88,8 @@ public class LessonNavigator extends VBox {
                     setGraphic(null);
                     setTooltip(null);
                     getStyleClass().add("tier-cell");
+                    setAccessibleRole(AccessibleRole.TEXT);
+                    setAccessibleText(capitalize(tier) + " tier, " + count + " lessons");
                 } else {
                     boolean done = progressStore != null
                             && progressStore.isLessonCompleted(lesson.meta.id);
@@ -94,6 +104,11 @@ public class LessonNavigator extends VBox {
                     tip.setShowDelay(Duration.millis(400));
                     setTooltip(tip);
                     getStyleClass().add("lesson-cell");
+                    setAccessibleRole(AccessibleRole.TREE_ITEM);
+                    setAccessibleText(lesson.meta.title
+                            + (done ? ", completed" : "")
+                            + ", " + lesson.meta.estimatedMinutes + " minutes");
+                    setAccessibleHelp("Press Enter to open this lesson");
                 }
             }
         });
@@ -239,6 +254,8 @@ public class LessonNavigator extends VBox {
     public Lesson getSelectedLesson() { return selectedLesson.get(); }
 
     public int getLessonCount() { return allLessons.size(); }
+
+    public List<Lesson> getAllLessons() { return allLessons; }
 
     public void selectNext() {
         Lesson cur = getSelectedLesson();

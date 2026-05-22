@@ -20,8 +20,34 @@ starterSnippet: |
   }
 challenges:
   - id: c1
-    description: "Set the grow button's minWidth to 120"
-    assertion: containsNodeOfType(Button)
+    description: "Add a third Button labeled \"Min 120\" with setMinWidth(120) and setMaxWidth(Double.MAX_VALUE)"
+    assertion: countOfType(Button, n=3)
+    starterSnippet: |
+      public static Parent build() {
+          Button small = new Button("Fixed 80px");
+          small.setMinWidth(80);
+          small.setMaxWidth(80);
+
+          Button grow = new Button("I grow");
+          grow.setMaxWidth(Double.MAX_VALUE);
+
+          return new VBox(10, small, grow);
+      }
+    solutionSnippet: |
+      public static Parent build() {
+          Button small = new Button("Fixed 80px");
+          small.setMinWidth(80);
+          small.setMaxWidth(80);
+
+          Button grow = new Button("I grow");
+          grow.setMaxWidth(Double.MAX_VALUE);
+
+          Button min120 = new Button("Min 120");
+          min120.setMinWidth(120);
+          min120.setMaxWidth(Double.MAX_VALUE);
+
+          return new VBox(10, small, grow, min120);
+      }
 nextLesson: 010-layout-pulse
 ---
 

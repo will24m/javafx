@@ -2,6 +2,7 @@ package com.jfxtutor.ui;
 
 import com.jfxtutor.app.JavaFxTutorApp;
 import javafx.scene.control.Label;
+import javafx.scene.control.TextArea;
 import javafx.stage.Stage;
 import org.junit.jupiter.api.Test;
 import org.testfx.api.FxRobot;
@@ -47,7 +48,7 @@ class SmokeUiTest {
     @Test
     void blankEditorShowsCompileError(FxRobot robot) throws Exception {
         EditorPane editor = robot.lookup("#editorPane").queryAs(EditorPane.class);
-        Label error = robot.lookup(".preview-error-label").queryAs(Label.class);
+        TextArea error = robot.lookup("#previewErrorArea").queryAs(TextArea.class);
 
         robot.interact(() -> editor.setText(""));
         WaitForAsyncUtils.waitFor(5, TimeUnit.SECONDS, () -> !error.getText().isBlank());
@@ -58,7 +59,7 @@ class SmokeUiTest {
     @Test
     void slowSnippetShowsTimeoutError(FxRobot robot) throws Exception {
         EditorPane editor = robot.lookup("#editorPane").queryAs(EditorPane.class);
-        Label error = robot.lookup(".preview-error-label").queryAs(Label.class);
+        TextArea error = robot.lookup("#previewErrorArea").queryAs(TextArea.class);
 
         robot.interact(() -> editor.setText("""
                 try {
