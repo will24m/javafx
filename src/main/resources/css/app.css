@@ -427,6 +427,61 @@
     -fx-border-color: transparent;
 }
 
+/* -------- Challenges section --------------------------------- */
+.host-root .challenge-section {
+    -fx-border-color: -fx-border-hard transparent transparent transparent;
+    -fx-border-width: 1 0 0 0;
+    -fx-padding: 16 0 0 0;
+}
+.host-root .challenge-header {
+    -fx-font-size: 11px;
+    -fx-font-weight: bold;
+    -fx-text-fill: -fx-text-2;
+    -fx-padding: 0 24 8 24;
+}
+.host-root .challenge-row {
+    -fx-background-color: -fx-bg-2;
+    -fx-background-radius: 6;
+    -fx-border-color: -fx-border-soft;
+    -fx-border-width: 1;
+    -fx-border-radius: 6;
+    -fx-margin: 0 24 0 24;
+}
+.host-root .challenge-description {
+    -fx-text-fill: -fx-text-1;
+    -fx-font-size: 13px;
+}
+.host-root .challenge-toolbar {
+    -fx-spacing: 8;
+}
+.host-root .challenge-status {
+    -fx-font-size: 15px;
+    -fx-min-width: 20;
+}
+.host-root .challenge-status-idle { -fx-text-fill: -fx-text-3; }
+.host-root .challenge-status-pass { -fx-text-fill: -fx-success; }
+.host-root .challenge-status-fail { -fx-text-fill: -fx-error; }
+.host-root .challenge-feedback {
+    -fx-font-size: 12px;
+    -fx-padding: 6 8 6 8;
+    -fx-background-radius: 4;
+}
+.host-root .challenge-status-pass ~ .challenge-feedback,
+.host-root .challenge-row:pass .challenge-feedback {
+    -fx-text-fill: -fx-success;
+    -fx-background-color: derive(-fx-success, -65%);
+}
+/* Feedback color is driven by the status class set in Java, not a sibling selector.
+   These rules use a direct class on the feedback label for reliability. */
+.host-root .challenge-feedback-pass {
+    -fx-text-fill: -fx-success;
+    -fx-background-color: derive(-fx-success, -65%);
+}
+.host-root .challenge-feedback-fail {
+    -fx-text-fill: #ffd4d4;
+    -fx-background-color: derive(-fx-error, -60%);
+}
+
 /* -------- SplitPane dividers (host-wide) --------------------- */
 .host-root > .split-pane > .split-pane-divider {
     -fx-background-color: -fx-border-hard;

@@ -159,6 +159,22 @@ public class InteractiveIde extends VBox {
         runNow();
     }
 
+    /**
+     * Like {@link #loadLesson(Lesson)} but uses {@code savedSnippet} as the
+     * initial editor content instead of the lesson's starter snippet.
+     * Used to restore the user's last-edited state from {@code ProgressStore}.
+     */
+    public void loadLessonWithSnippet(Lesson lesson, String savedSnippet) {
+        if (lesson == null) return;
+        AppLog.info("ide", "Loading lesson " + lesson.meta.id + " with saved snippet.");
+        currentLesson.set(lesson);
+        this.starterSnippet = lesson.meta.starterSnippet == null
+                ? "" : lesson.meta.starterSnippet;
+        lessonChip.setText(lesson.meta.id + "  ·  " + lesson.meta.title);
+        editorPane.setText(savedSnippet != null ? savedSnippet : starterSnippet);
+        runNow();
+    }
+
     /** Restore the editor to the lesson's starter snippet. */
     public void resetToStarter() {
         AppLog.info("ide", "Reset requested; restoring the current lesson starter snippet.");

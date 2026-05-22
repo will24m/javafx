@@ -1,6 +1,9 @@
 package com.jfxtutor.ui;
 
+import com.jfxtutor.data.curriculum.ChallengeDef;
 import com.jfxtutor.data.curriculum.Lesson;
+import com.jfxtutor.engine.challenge.AssertionResult;
+import com.jfxtutor.engine.challenge.ChallengeRunner;
 import com.jfxtutor.util.AppLog;
 import org.commonmark.node.BulletList;
 import org.commonmark.node.Code;
@@ -18,8 +21,12 @@ import org.commonmark.node.Paragraph;
 import org.commonmark.node.SoftLineBreak;
 import org.commonmark.node.StrongEmphasis;
 import org.commonmark.parser.Parser;
+import javafx.geometry.Insets;
+import javafx.scene.Parent;
+import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.ScrollPane;
+import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 import javafx.scene.text.Font;
@@ -30,6 +37,7 @@ import javafx.scene.text.TextFlow;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Supplier;
 
 /**
  * Middle-left lesson reading pane.
@@ -43,6 +51,14 @@ public class LessonPane extends VBox {
     private static final Parser MD = Parser.builder().build();
 
     private final VBox content;
+    /** Provides the live preview root so challenges can be checked at click-time. */
+    private Supplier<Parent> snippetRootSupplier = () -> null;
+    /** Persists challenge results across sessions. May be null in tests. */
+    private com.jfxtutor.data.progress.ProgressStore progressStore;
+    /** Id of the lesson currently displayed — used when recording challenge results. */
+    private String currentLessonId;
+    /** Called after a challenge is newly passed so the navigator can refresh badges. */
+    private Runnable onChallengePassed = () -> {};
 
     public LessonPane() {
         AppLog.info("lesson-pane", "Creating Markdown lesson renderer.");
@@ -60,10 +76,29 @@ public class LessonPane extends VBox {
         getChildren().add(scroll);
     }
 
+    /**
+     * Must be called once by MainView so challenges can read the live preview root.
+     */
+    public void setSnippetRootSupplier(Supplier<Parent> supplier) {
+        this.snippetRootSupplier = supplier;
+    }
+
+    public void setProgressStore(com.jfxtutor.data.progress.ProgressStore store) {
+        this.progressStore = store;
+    }
+
+    public void setOnChallengePassed(Runnable callback) {
+        this.onChallengePassed = callback != null ? callback : () -> {};
+    }
+
     public void showLesson(Lesson lesson) {
         AppLog.info("lesson-pane", "Rendering lesson body for " + lesson.meta.id + ".");
+        this.currentLessonId = lesson.meta.id;
         content.getChildren().clear();
         content.getChildren().addAll(buildNodes(lesson.meta.title, lesson.markdownBody));
+        if (lesson.meta.challenges != null && !lesson.meta.challenges.isEmpty()) {
+            content.getChildren().add(buildChallengesSection(lesson.meta.challenges));
+        }
     }
 
     /** Fallback when no lesson is loaded (empty curriculum or smoke test). */
@@ -74,6 +109,92 @@ public class LessonPane extends VBox {
         title.setWrapText(true);
         content.getChildren().add(title);
         content.getChildren().add(plainParagraph("(Lesson body from " + id + ".md)"));
+    }
+
+    // ── challenge section ─────────────────────────────────────────────────────
+
+    private javafx.scene.Node buildChallengesSection(List<ChallengeDef> challenges) {
+        VBox section = new VBox(8);
+        section.getStyleClass().add("challenge-section");
+        section.setPadding(new Insets(16, 0, 0, 0));
+
+        Label header = new Label("Challenges");
+        header.getStyleClass().add("challenge-header");
+        section.getChildren().add(header);
+
+        for (ChallengeDef def : challenges) {
+            section.getChildren().add(buildChallengeRow(def));
+        }
+        return section;
+    }
+
+    private javafx.scene.Node buildChallengeRow(ChallengeDef def) {
+        VBox row = new VBox(6);
+        row.getStyleClass().add("challenge-row");
+        row.setPadding(new Insets(10, 14, 10, 14));
+
+        Label desc = new Label(def.description != null ? def.description : "");
+        desc.setWrapText(true);
+        desc.getStyleClass().add("challenge-description");
+
+        Label statusIcon = new Label("○");
+        statusIcon.getStyleClass().addAll("challenge-status", "challenge-status-idle");
+
+        Button checkBtn = new Button("Check");
+        checkBtn.getStyleClass().addAll("ide-button", "challenge-check-btn");
+
+        HBox toolbar = new HBox(8, statusIcon, checkBtn);
+        toolbar.getStyleClass().add("challenge-toolbar");
+        toolbar.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
+
+        Label feedback = new Label();
+        feedback.setWrapText(true);
+        feedback.getStyleClass().add("challenge-feedback");
+        feedback.setVisible(false);
+        feedback.setManaged(false);
+
+        // Restore prior pass state from progress store without calling the assertion.
+        if (progressStore != null && currentLessonId != null
+                && progressStore.isChallengeComplete(currentLessonId, def.id)) {
+            statusIcon.setText("✓");
+            statusIcon.getStyleClass().removeAll("challenge-status-idle");
+            statusIcon.getStyleClass().add("challenge-status-pass");
+        }
+
+        checkBtn.setOnAction(e -> {
+            Parent root = snippetRootSupplier.get();
+            AssertionResult result = ChallengeRunner.run(def, root);
+            AppLog.info("lesson-pane",
+                    "Challenge " + def.id + " check clicked: " + (result.passed() ? "pass" : "fail"));
+
+            feedback.setText(result.message());
+            feedback.setVisible(true);
+            feedback.setManaged(true);
+            feedback.getStyleClass().removeAll("challenge-feedback-pass", "challenge-feedback-fail");
+
+            statusIcon.getStyleClass().removeAll(
+                    "challenge-status-idle", "challenge-status-pass", "challenge-status-fail");
+            if (result.passed()) {
+                statusIcon.setText("✓");
+                statusIcon.getStyleClass().add("challenge-status-pass");
+                feedback.getStyleClass().add("challenge-feedback-pass");
+                if (progressStore != null && currentLessonId != null) {
+                    progressStore.recordChallengePass(currentLessonId, def.id);
+                    progressStore.flush();
+                    onChallengePassed.run();
+                }
+            } else {
+                statusIcon.setText("✗");
+                statusIcon.getStyleClass().add("challenge-status-fail");
+                feedback.getStyleClass().add("challenge-feedback-fail");
+                if (progressStore != null && currentLessonId != null) {
+                    progressStore.recordAttempt(currentLessonId);
+                }
+            }
+        });
+
+        row.getChildren().addAll(desc, toolbar, feedback);
+        return row;
     }
 
     // ── rendering ────────────────────────────────────────────────────────────

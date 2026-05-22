@@ -1,6 +1,7 @@
 package com.jfxtutor.app;
 
 import com.jfxtutor.data.curriculum.Lesson;
+import com.jfxtutor.data.progress.ProgressStore;
 import com.jfxtutor.engine.runtime.SnippetRunner;
 import com.jfxtutor.ui.EditorPane;
 import com.jfxtutor.ui.InspectorPane;
@@ -36,13 +37,16 @@ public class MainView extends BorderPane {
     private final LessonPane lessonPane;
     private final InteractiveIde ide;
     private final InspectorPane inspectorPane;
+    private final ProgressStore progressStore;
 
     private final Label appHeaderCrumbs;
     private final Label statusLeft;
     private final Label statusRight;
     private int totalLessons;
+    private String currentLessonId;
 
-    public MainView() {
+    public MainView(ProgressStore progressStore) {
+        this.progressStore = progressStore;
         AppLog.info("ui", "Constructing MainView shell: header, workspace columns, and status bar.");
         getStyleClass().add("host-root");
         setId("mainView");
@@ -99,6 +103,13 @@ public class MainView extends BorderPane {
         statusBar.setPadding(new Insets(4, 14, 4, 14));
         setBottom(statusBar);
 
+        // Give both content panes access to progress.
+        lessonNavigator.setProgressStore(progressStore);
+        lessonPane.setSnippetRootSupplier(ide::getMountedRoot);
+        lessonPane.setProgressStore(progressStore);
+        // Refresh the navigator badge when a challenge is newly passed.
+        lessonPane.setOnChallengePassed(lessonNavigator::refreshBadges);
+
         // ---- Wire selection events ----
         // The navigator exposes a selectedLesson property. When that property
         // changes, MainView broadcasts the new Lesson to the educational text
@@ -106,9 +117,25 @@ public class MainView extends BorderPane {
         lessonNavigator.selectedLessonProperty().addListener((obs, old, lesson) -> {
             if (lesson == null) return;
             AppLog.info("ui", "Lesson selected: " + lesson.meta.id + " - " + lesson.meta.title);
+
+            // Save the previous lesson's snippet before switching away.
+            if (currentLessonId != null) {
+                progressStore.saveSnippet(currentLessonId, ide.getEditorPane().getText());
+            }
+            currentLessonId = lesson.meta.id;
+            progressStore.setLastLesson(lesson.meta.id);
+
+            // If the user previously edited this lesson, restore their snippet;
+            // otherwise the IDE falls back to the lesson's starter snippet.
+            String saved = progressStore.loadSnippet(lesson.meta.id);
             lessonPane.showLesson(lesson);
-            ide.loadLesson(lesson);
+            if (saved != null) {
+                ide.loadLessonWithSnippet(lesson, saved);
+            } else {
+                ide.loadLesson(lesson);
+            }
             updateHeaderAndStatus(lesson);
+            progressStore.flush();
         });
 
         // Refresh the Inspector whenever a new snippet root is mounted.
@@ -117,16 +144,26 @@ public class MainView extends BorderPane {
         ide.mountedRootProperty().addListener((obs, old, root) ->
                 inspectorPane.setRoot(root));
 
-        // Initial state
-        // LessonNavigator loads the curriculum during construction, so by the
-        // time we get here it may already have a first selected lesson.
+        // Initial state — restore the lesson the user had open last session.
         this.totalLessons = lessonNavigator.getLessonCount();
         AppLog.info("ui", "Navigator reports " + totalLessons + " lessons loaded.");
-        var initial = lessonNavigator.getSelectedLesson();
+
+        String lastId = progressStore.getLastLessonId();
+        Lesson initial = lastId != null
+                ? lessonNavigator.findById(lastId) : null;
+        if (initial == null) initial = lessonNavigator.getSelectedLesson();
+
         if (initial != null) {
+            currentLessonId = initial.meta.id;
             AppLog.info("ui", "Opening initial lesson: " + initial.meta.id + " - " + initial.meta.title);
+            lessonNavigator.selectLesson(initial);
             lessonPane.showLesson(initial);
-            ide.loadLesson(initial);
+            String saved = progressStore.loadSnippet(initial.meta.id);
+            if (saved != null) {
+                ide.loadLessonWithSnippet(initial, saved);
+            } else {
+                ide.loadLesson(initial);
+            }
             updateHeaderAndStatus(initial);
         } else {
             AppLog.info("ui", "No curriculum lesson was selected; showing fallback lesson stub.");

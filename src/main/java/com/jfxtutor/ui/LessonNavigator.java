@@ -2,6 +2,7 @@ package com.jfxtutor.ui;
 
 import com.jfxtutor.data.curriculum.CurriculumLoader;
 import com.jfxtutor.data.curriculum.Lesson;
+import com.jfxtutor.data.progress.ProgressStore;
 import com.jfxtutor.util.AppLog;
 import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.SimpleObjectProperty;
@@ -36,6 +37,7 @@ public class LessonNavigator extends VBox {
     private final TextField search;
     private final ObjectProperty<Lesson> selectedLesson = new SimpleObjectProperty<>();
     private List<Lesson> allLessons = List.of();
+    private ProgressStore progressStore;
 
     public LessonNavigator() {
         AppLog.info("navigator", "Creating lesson navigator and search field.");
@@ -79,7 +81,11 @@ public class LessonNavigator extends VBox {
                     setTooltip(null);
                     getStyleClass().add("tier-cell");
                 } else {
-                    String label = String.format("%03d   %s", lesson.meta.order, lesson.meta.title);
+                    boolean done = progressStore != null
+                            && progressStore.isLessonCompleted(lesson.meta.id);
+                    String badge = done ? " ✓" : "";
+                    String label = String.format("%03d   %s%s",
+                            lesson.meta.order, lesson.meta.title, badge);
                     setText(label);
                     setGraphic(null);
                     Tooltip tip = new Tooltip(lesson.meta.title
@@ -186,6 +192,47 @@ public class LessonNavigator extends VBox {
     private static String capitalize(String s) {
         if (s == null || s.isEmpty()) return s;
         return Character.toUpperCase(s.charAt(0)) + s.substring(1);
+    }
+
+    /** Provides progress state so the cell factory can show completion badges. */
+    public void setProgressStore(ProgressStore store) {
+        this.progressStore = store;
+        tree.refresh();
+    }
+
+    /** Re-renders all cells so newly earned completion badges appear immediately. */
+    public void refreshBadges() {
+        tree.refresh();
+    }
+
+    /** Returns the lesson with {@code id}, or {@code null} if not found. */
+    public Lesson findById(String id) {
+        if (id == null) return null;
+        return allLessons.stream()
+                .filter(l -> id.equals(l.meta.id))
+                .findFirst().orElse(null);
+    }
+
+    /**
+     * Selects {@code lesson} in the tree, expanding its tier if needed.
+     * No-op if the lesson is not currently visible (e.g. filtered out).
+     */
+    public void selectLesson(Lesson lesson) {
+        if (lesson == null) return;
+        TreeItem<Lesson> root = tree.getRoot();
+        if (root == null) return;
+        for (TreeItem<Lesson> tier : root.getChildren()) {
+            for (TreeItem<Lesson> leaf : tier.getChildren()) {
+                if (leaf.getValue() != null
+                        && leaf.getValue().meta.id.equals(lesson.meta.id)) {
+                    tier.setExpanded(true);
+                    tree.getSelectionModel().select(leaf);
+                    int idx = tree.getRow(leaf);
+                    if (idx >= 0) tree.scrollTo(idx);
+                    return;
+                }
+            }
+        }
     }
 
     public ObjectProperty<Lesson> selectedLessonProperty() { return selectedLesson; }
